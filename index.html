@@ -67,7 +67,62 @@
 <script>
 const CFG=window.KAREN_FLIGHT_CONFIG||{};
 const sb=window.supabase&&CFG.supabaseUrl&&CFG.supabaseKey?window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseKey):null;
-let flights=[],currentUser=null,currentEmployee=null;
+let flights=[],currentUser=null,currentEmployee=null,currentPassenger=null;
+function passengerAlias(username){return "passenger."+username.trim().toLowerCase()+"@karenflight.invalid"}
+async function setPassengerSession(user){
+  const {data,error}=await sb.from("passenger_accounts").select("user_id,roblox_username").eq("user_id",user.id).maybeSingle();
+  if(error||!data){await sb.auth.signOut();currentPassenger=null;return false}
+  currentPassenger=data;
+  $("passengerRoblox").value=data.roblox_username;
+  $("accountButton").textContent="حسابي";
+  $("passengerAuthForms").classList.add("hidden");
+  $("passengerAccountPanel").classList.remove("hidden");
+  $("passengerWelcome").textContent="مسجل الدخول باسم "+data.roblox_username;
+  return true;
+}
+$("passengerRegisterForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(!sb)return msg("registerMessage","قاعدة البيانات غير جاهزة.",true);
+  const username=$("registerUsername").value.trim(),password=$("registerPassword").value;
+  if(!/^[A-Za-z0-9_]{3,20}$/.test(username))return msg("registerMessage","اكتب اسم Roblox صحيح من 3 إلى 20 حرف أو رقم أو _.",true);
+  const response=await fetch(CFG.supabaseUrl+"/functions/v1/passenger-register",{method:"POST",headers:{"Content-Type":"application/json","apikey":CFG.supabaseKey},body:JSON.stringify({username,password})});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)return msg("registerMessage",result.error||"تعذر إنشاء الحساب.",true);
+  const {data,error}=await sb.auth.signInWithPassword({email:passengerAlias(username),password});
+  if(error)return msg("registerMessage","تم إنشاء الحساب لكن تعذر تسجيل الدخول. جرّب الدخول من النموذج الثاني.",true);
+  if(!await setPassengerSession(data.user))return msg("registerMessage","تم إنشاء الحساب لكن تعذر تحميل بياناته.",true);
+  msg("registerMessage","تم إنشاء حسابك بنجاح.");
+});
+$("passengerLoginForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(!sb)return msg("passengerLoginMessage","قاعدة البيانات غير جاهزة.",true);
+  const username=$("passengerLoginUsername").value.trim(),password=$("passengerLoginPassword").value;
+  if(!/^[A-Za-z0-9_]{3,20}$/.test(username))return msg("passengerLoginMessage","اسم المستخدم غير صحيح.",true);
+  const {data,error}=await sb.auth.signInWithPassword({email:passengerAlias(username),password});
+  if(error)return msg("passengerLoginMessage","اسم المستخدم أو كلمة المرور غير صحيحة.",true);
+  if(!await setPassengerSession(data.user))return msg("passengerLoginMessage","هذا الحساب ليس حساب مسافر صالحاً.",true);
+  closeModal("accountModal");
+});
+async function passengerSignOut(){
+  if(sb)await sb.auth.signOut();
+  currentPassenger=null;
+  $("passengerAuthForms").classList.remove("hidden");
+  $("passengerAccountPanel").classList.add("hidden");
+  $("accountButton").textContent="دخول المسافرين";
+  $("passengerRoblox").value="";
+  $("myBookings").innerHTML="";
+}
+async function loadMyBookings(){
+  if(!currentPassenger)return;
+  const {data,error}=await sb.from("bookings").select("id,status,created_at,flights(flight_number,origin_code,destination_code,departure_at)").eq("passenger_user_id",currentPassenger.user_id).order("created_at",{ascending:false});
+  if(error){$("myBookings").textContent="تعذر تحميل الحجوزات.";return}
+  $("myBookings").innerHTML=data.length?data.map(b=>'<div class="dash-panel"><b class="en">'+safe(b.flights?.flight_number||"—")+'</b><div>'+safe(b.flights?.origin_code||"—")+' → '+safe(b.flights?.destination_code||"—")+'</div><div>'+dateLabel(b.flights?.departure_at||b.created_at)+'</div><div>الحالة: '+(b.status==="pending"?"قيد المراجعة":b.status==="approved"?"مقبول":"مرفوض")+'</div></div>').join(""):"ما عندك حجوزات حالياً.";
+}
+async function restorePassenger(){
+  if(!sb)return;
+  const {data}=await sb.auth.getSession();
+  if(data.session?.user)await setPassengerSession(data.session.user);
+}
 const $=id=>document.getElementById(id);
 const safe=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function openModal(id){$(id).classList.add("open")}function closeModal(id){$(id).classList.remove("open")}
@@ -77,7 +132,7 @@ function dateLabel(v){try{return new Intl.DateTimeFormat("ar-SA",{dateStyle:"med
 function renderFlights(){const from=$("fromFilter").value,to=$("toFilter").value,date=$("dateFilter").value;const list=flights.filter(f=>(!from||f.origin_code===from)&&(!to||f.destination_code===to)&&(!date||f.departure_at.slice(0,10)===date));$("flightList").innerHTML=list.length?list.map(f=>'<article class="flight-card"><div class="flight-top"><span class="flight-no en">'+safe(f.flight_number)+'</span><span class="status">'+(f.status==="boarding"?"الصعود متاح":f.status==="delayed"?"متأخرة":"مجدولة")+'</span></div><div class="route"><div class="airport"><b>'+safe(f.origin_code)+'</b><span>'+safe(f.origin_name||"مطار المغادرة")+'</span></div><div class="route-line"><span>✈</span></div><div class="airport" style="text-align:left"><b>'+safe(f.destination_code)+'</b><span>'+safe(f.destination_name||"مطار الوصول")+'</span></div></div><div class="flight-bottom"><span class="flight-meta">'+dateLabel(f.departure_at)+'<br>'+safe(f.aircraft||"طائرة Karen")+'</span><button class="btn primary small" onclick="openBooking(\''+safe(f.id)+'\')">احجز</button></div></article>').join(""):'<div class="empty">ما فيه رحلات مطابقة حالياً. ارجع لاحقاً للاطلاع على الرحلات الجديدة.</div>';const sel=$("bookingFlight");sel.innerHTML='<option value="">اختر رحلة متاحة</option>'+flights.filter(f=>["scheduled","boarding"].includes(f.status)).map(f=>'<option value="'+safe(f.id)+'">'+safe(f.flight_number)+' · '+safe(f.origin_code)+' → '+safe(f.destination_code)+' · '+dateLabel(f.departure_at)+'</option>').join("")}
 function openBooking(id){$("bookingFlight").value=id;openModal("bookingModal")}
 async function loadFlights(){if(!sb){$("flightList").innerHTML='<div class="empty">إعداد الاتصال بقاعدة البيانات غير مكتمل.</div>';return}const {data,error}=await sb.from("flights").select("*").in("status",["scheduled","boarding","delayed"]).gte("departure_at",new Date(Date.now()-86400000).toISOString()).order("departure_at");if(error){$("flightList").innerHTML='<div class="empty">تعذر تحميل الرحلات. تأكد من تطبيق ملف قاعدة البيانات في مجلد supabase.</div>';return}flights=data||[];airportOptions();renderFlights()}
-$("bookingForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return msg("bookingMessage","قاعدة البيانات غير جاهزة.",true);const payload={flight_id:$("bookingFlight").value,roblox_username:$("passengerRoblox").value.trim(),passenger_name:$("passengerName").value.trim(),notes:$("bookingNotes").value.trim()||null};const {error}=await sb.from("bookings").insert(payload);if(error)return msg("bookingMessage","ما قدرنا نرسل الطلب. تأكد أن قاعدة البيانات جاهزة وأن الرحلة متاحة.",true);msg("bookingMessage","تم إرسال طلب الحجز بنجاح! بانتظار مراجعة الإدارة.");$("bookingForm").reset()});
+$("bookingForm").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return msg("bookingMessage","قاعدة البيانات غير جاهزة.",true);if(!currentPassenger){msg("bookingMessage","سجّل دخولك بحساب المسافر أولاً.",true);openModal("accountModal");return}const payload={flight_id:$("bookingFlight").value,roblox_username:currentPassenger.roblox_username,passenger_name:$("passengerName").value.trim(),passenger_user_id:currentPassenger.user_id,notes:$("bookingNotes").value.trim()||null};const {error}=await sb.from("bookings").insert(payload);if(error)return msg("bookingMessage",error.message.includes("duplicate")?"سبق وحجزت هذه الرحلة بهذا الحساب.":"ما قدرنا نرسل الطلب. تأكد من توفر المقاعد وحالة الرحلة.",true);msg("bookingMessage","تم إرسال طلب الحجز بنجاح! تقدر تتابع حالته من حجوزاتي.");$("bookingForm").reset();$("passengerRoblox").value=currentPassenger.roblox_username;});
 $("loginEmployeeId").addEventListener("input",()=>{$("loginButton").disabled=$("loginEmployeeId").value.trim().length<5||!$("loginPassword").value});
 $("loginPassword").addEventListener("input",()=>{$("loginButton").disabled=$("loginEmployeeId").value.trim().length<5||!$("loginPassword").value});
 $("employeeLogin").addEventListener("submit",async e=>{e.preventDefault();if(!sb)return msg("loginMessage","قاعدة البيانات غير جاهزة.",true);const employeeId=$("loginEmployeeId").value.trim().toUpperCase(),password=$("loginPassword").value;if(!employeeId||!password)return;const {data:record,error:lookupError}=await sb.from("employees").select("email").eq("employee_id",employeeId).eq("active",true).maybeSingle();if(lookupError||!record?.email)return msg("loginMessage","معرّف الدخول غير صحيح أو الحساب غير مفعّل.",true);const {data,error}=await sb.auth.signInWithPassword({email:record.email,password});if(error)return msg("loginMessage","معرّف الدخول أو كلمة المرور غير صحيحة.",true);const {data:emp,error:empErr}=await sb.from("employees").select("*").eq("user_id",data.user.id).eq("employee_id",employeeId).eq("active",true).maybeSingle();if(empErr||!emp){await sb.auth.signOut();return msg("loginMessage","تعذر التحقق من صلاحية الحساب.",true)}currentUser=data.user;currentEmployee=emp;closeModal("employeeModal");$("publicSite").classList.add("hidden");$("siteHeader").classList.add("hidden");$("dashboard").classList.add("active");$("dashTitle").textContent=emp.role==="owner"||emp.role==="admin"?"لوحة الإدارة":"لوحة الموظفين";$("dashUser").textContent=emp.roblox_username+" · "+emp.role;await loadDashboard()});
@@ -90,6 +145,6 @@ async function changeFlight(id,status){const {error}=await sb.from("flights").up
 async function changeBooking(id,status){const {error}=await sb.from("bookings").update({status}).eq("id",id);if(error)alert("تعذر تحديث الحجز. تأكد من الصلاحيات.");else loadDashboard()}
 $("flightForm").addEventListener("submit",async e=>{e.preventDefault();const row={flight_number:$("fNumber").value.trim().toUpperCase(),origin_code:$("fFrom").value.trim().toUpperCase(),destination_code:$("fTo").value.trim().toUpperCase(),departure_at:new Date($("fTime").value).toISOString(),aircraft:$("fAircraft").value.trim()||null,seats_total:Number($("fSeats").value),status:$("fStatus").value,created_by:currentUser.id};const {error}=await sb.from("flights").insert(row);if(error)return alert("تعذرت إضافة الرحلة. قد يكون رقم الرحلة مستخدماً.");$("flightForm").reset();loadDashboard()});
 $("employeeForm").addEventListener("submit",async e=>{e.preventDefault();if(currentEmployee.role!=="owner")return;const employeeId=$("eId").value.trim().toUpperCase();const internalLogin="employee."+employeeId.toLowerCase().replace(/[^a-z0-9]/g,"")+"@karenflight.invalid";const row={roblox_username:$("eUsername").value.trim(),employee_id:employeeId,email:internalLogin,role:$("eRole").value};const {error}=await sb.from("employees").insert(row);if(error)return alert("تعذرت إضافة الموظف. تحقق من اسم Roblox ومعرّف الموظف.");$("employeeForm").reset();loadDashboard()});
-loadFlights();
+restorePassenger();loadFlights();
 </script>
 </body></html>

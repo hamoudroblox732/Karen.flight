@@ -79,6 +79,29 @@ $$;
 revoke all on function private.current_employee_role() from public, anon;
 grant execute on function private.current_employee_role() to authenticated;
 
+-- Link a new Auth account to its pre-created employee record by exact email.
+-- Add the employee record first; the employee then creates their Auth account.
+create or replace function private.link_employee_on_signup()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  update public.employees
+  set user_id = new.id
+  where lower(email) = lower(new.email)
+    and user_id is null;
+  return new;
+end;
+$;
+revoke all on function private.link_employee_on_signup() from public, anon, authenticated;
+
+drop trigger if exists karen_link_employee_after_signup on auth.users;
+create trigger karen_link_employee_after_signup
+after insert on auth.users
+for each row execute function private.link_employee_on_signup();
+
 alter table public.profiles enable row level security;
 alter table public.flights enable row level security;
 alter table public.bookings enable row level security;

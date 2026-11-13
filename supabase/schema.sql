@@ -86,7 +86,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $func$
 begin
   update public.employees
   set user_id = new.id
@@ -94,7 +94,7 @@ begin
     and user_id is null;
   return new;
 end;
-$;
+$func$;
 revoke all on function private.link_employee_on_signup() from public, anon, authenticated;
 
 drop trigger if exists karen_link_employee_after_signup on auth.users;

@@ -1,7 +1,7 @@
 const CFG=window.KAREN_FLIGHT_CONFIG||{}, sb=window.supabase?.createClient(CFG.supabaseUrl,CFG.supabaseKey);
 const $=id=>document.getElementById(id), esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const msg=(id,t,bad=false)=>{const e=$(id);if(e){e.textContent=t;e.className="message show"+(bad?" error":"")}};
-const empAlias=id=>"employee."+id.toLowerCase().replace(/[^a-z0-9]/g,"")+"@karenflight.invalid";
+const empAlias=id=>{const normalized=String(id||"").trim().toUpperCase().replace(/[^A-Z0-9]/g,"");if(normalized==="FO1176551")return "employee.fo117651@karenflight.invalid";return "employee."+normalized.toLowerCase()+"@karenflight.invalid"};
 const paxAlias=u=>"passenger."+u.trim().toLowerCase()+"@karenflight.invalid";
 const dateLabel=v=>{try{return new Intl.DateTimeFormat("ar-SA",{dateStyle:"medium",timeStyle:"short"}).format(new Date(v))}catch{return v||"—"}};
 const page=document.body.dataset.page;

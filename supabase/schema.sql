@@ -155,3 +155,49 @@ grant select, insert on public.flight_logs to authenticated;
 -- Create the first owner employee record after creating the owner's Auth user:
 -- insert into public.employees (user_id, roblox_username, employee_id, email, role)
 -- values ('AUTH-USER-UUID', 'YOUR_ROBLOX_USERNAME', 'KRN-OWNER', 'YOUR_EMAIL', 'owner');
+
+-- Prevent duplicate bookings and overbooking.
+create unique index if not exists bookings_one_per_passenger_per_flight
+on public.bookings (flight_id, lower(roblox_username));
+
+create or replace function private.check_booking_capacity()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $func$
+declare
+  available_seats integer;
+  current_status text;
+  used_seats integer;
+begin
+  perform pg_advisory_xact_lock(hashtextextended(new.flight_id::text, 0));
+
+  select f.seats_total, f.status
+    into available_seats, current_status
+  from public.flights f
+  where f.id = new.flight_id;
+
+  if not found or current_status not in ('scheduled','boarding') then
+    raise exception 'This flight is not accepting bookings';
+  end if;
+
+  select count(*)::integer into used_seats
+  from public.bookings b
+  where b.flight_id = new.flight_id
+    and b.status in ('pending','approved');
+
+  if used_seats >= available_seats then
+    raise exception 'This flight is full';
+  end if;
+
+  return new;
+end;
+$func$;
+
+revoke all on function private.check_booking_capacity() from public, anon, authenticated;
+
+drop trigger if exists bookings_capacity_guard on public.bookings;
+create trigger bookings_capacity_guard
+before insert on public.bookings
+for each row execute function private.check_booking_capacity();

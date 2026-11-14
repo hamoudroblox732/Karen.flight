@@ -68,15 +68,12 @@ async function initDashboard(){
    sb.from("flights").select("*").order("created_at",{ascending:false}).limit(100),
    canSeeBookings?sb.from("bookings").select("*,flights(flight_number,origin_code,destination_code)").order("created_at",{ascending:false}).limit(100):Promise.resolve({data:[]}),
    owner?sb.from("employees").select("roblox_username,employee_id,role,active").order("created_at",{ascending:false}).limit(100):Promise.resolve({data:[]}),
-   sb.from("flight_staff_members").select("flight_id,employee_user_id,role")
+   sb.from("flight_staff_members").select("flight_id,employee_user_id,role,roblox_username")
   ]);
   if(fe)console.error(fe);
   $("statFlights").textContent=fc??"—";$("statBookings").textContent=bc??"—";$("statPending").textContent=pc??"—";
   const allFlights=fs||[], crewRows=members||[];
-  const employeeIds=[...new Set(crewRows.map(x=>x.employee_user_id))];
-  let employeeNames={};
-  if(employeeIds.length){const {data:names}=await sb.from("employees").select("user_id,roblox_username,role").in("user_id",employeeIds);(names||[]).forEach(x=>employeeNames[x.user_id]=x.roblox_username+" ("+x.role+")")}
-  const roster=f=>crewRows.filter(x=>x.flight_id===f.id).map(x=>esc(employeeNames[x.employee_user_id]||x.role)).join("، ")||"لم ينضم طاقم بعد";
+  const roster=f=>crewRows.filter(x=>x.flight_id===f.id).map(x=>esc(x.roblox_username||x.role)).join("، ")||"لم ينضم طاقم بعد";
   const statusName=f=>f.status==="boarding"?"بدأت":f.status==="closed"?"متوقفة/مغلقة":f.status==="delayed"?"متأخرة":f.status==="cancelled"?"ملغاة":"مجدولة";
   const flightActions=f=>{
    const actions=[];
@@ -106,7 +103,7 @@ async function initDashboard(){
   if(action==="reject")result=await sb.from("flights").update({status:"cancelled"}).eq("id",id);
   if(action==="start")result=await sb.from("flights").update({status:"boarding"}).eq("id",id);
   if(action==="stop")result=await sb.from("flights").update({status:"closed"}).eq("id",id);
-  if(action==="join")result=await sb.from("flight_staff_members").insert({flight_id:id,employee_user_id:uid,role});
+  if(action==="join")result=await sb.from("flight_staff_members").insert({flight_id:id,employee_user_id:uid,role,roblox_username:emp.roblox_username});
   if(action==="leave")result=await sb.from("flight_staff_members").delete().eq("flight_id",id).eq("employee_user_id",uid);
   if(result?.error){alert("تعذر تنفيذ الإجراء: "+result.error.message);return}await refresh();
  });

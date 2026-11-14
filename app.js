@@ -80,7 +80,8 @@ async function initDashboard(){
   const flightActions=f=>{
    const actions=[];
    if(owner&&!f.owner_approved&&!f.management_approved)actions.push('<button class="btn small primary" data-flight-action="owner-approve" data-id="'+f.id+'">موافقة المالك</button><button class="btn small" data-flight-action="reject" data-id="'+f.id+'">رفض</button>');
-    if(owner)actions.push('<button class="btn small" data-flight-action="delete" data-id="'+f.id+'" style="color:#c65b5b;border-color:#c65b5b">حذف الرحلة</button>');
+    const canDeleteCancelled = f.status === "cancelled" && (owner || (management && f.cancelled_at && Date.now() - new Date(f.cancelled_at).getTime() >= 60 * 60 * 1000));
+    if(canDeleteCancelled)actions.push('<button class="btn small" data-flight-action="delete" data-id="'+f.id+'" style="color:#c65b5b;border-color:#c65b5b">حذف الرحلة</button>');
    if(management&&f.owner_approved&&!f.management_approved)actions.push('<button class="btn small primary" data-flight-action="management-approve" data-id="'+f.id+'">اعتماد الإدارة</button><button class="btn small" data-flight-action="reject" data-id="'+f.id+'">رفض</button>');
    if(pilot&&f.pilot_user_id===uid&&f.owner_approved&&f.management_approved){if(f.status==="in_progress")actions.push('<button class="btn small" data-flight-action="stop" data-id="'+f.id+'">إيقاف الرحلة</button>');else if(["scheduled","delayed"].includes(f.status))actions.push('<button class="btn small primary" data-flight-action="start" data-id="'+f.id+'">بدء الرحلة</button>')}
    if(crew&&f.owner_approved&&f.management_approved&&["scheduled","boarding","delayed"].includes(f.status)){
@@ -108,11 +109,15 @@ async function initDashboard(){
   if(action==="stop")result=await sb.from("flights").update({status:"stopped"}).eq("id",id);
   if(action==="set-status"){const select=document.querySelector('[data-flight-status="'+id+'"]');if(!select)return;result=await sb.from("flights").update({status:select.value}).eq("id",id);}
    if(action==="delete"){
-    if(!owner)return alert("حذف الرحلات متاح للمالك فقط.");
-    if(!confirm("متأكد من حذف الرحلة نهائياً؟ ما تقدر تتراجع عن الحذف."))return;
+    if(!owner&&!management)return alert("حذف الرحلات متاح للمالك والإدارة فقط.");
+    const {data:target,error:flightCheckError}=await sb.from("flights").select("status,cancelled_at").eq("id",id).maybeSingle();
+    if(flightCheckError||!target)return alert("تعذر التحقق من الرحلة.");
+    if(target.status!=="cancelled")return alert("لا يمكن حذف الرحلة إلا بعد تغيير حالتها إلى ملغاة.");
+    if(management&&!owner&&(!target.cancelled_at||Date.now()-new Date(target.cancelled_at).getTime()<60*60*1000))return alert("لازم تمر ساعة كاملة على إلغاء الرحلة قبل أن تتمكن الإدارة من حذفها.");
+    if(!confirm("متأكد من حذف الرحلة الملغاة نهائياً؟ ما تقدر تتراجع عن الحذف."))return;
     const {count,error:bookingCheckError}=await sb.from("bookings").select("id",{count:"exact",head:true}).eq("flight_id",id);
     if(bookingCheckError)return alert("تعذر التحقق من حجوزات الرحلة: "+bookingCheckError.message);
-    if(count>0)return alert("ما تقدر تحذف الرحلة لأن عليها حجوزات. غيّر حالتها إلى ملغاة بدلاً من حذفها حتى ما تضيع بيانات المسافرين.");
+    if(count>0)return alert("ما تقدر تحذف الرحلة لأن عليها حجوزات. احتفظ بها كملغاة حتى ما تضيع بيانات المسافرين.");
     result=await sb.from("flights").delete().eq("id",id);
    }
   if(action==="join")result=await sb.from("flight_staff_members").insert({flight_id:id,employee_user_id:uid,role,roblox_username:emp.roblox_username});

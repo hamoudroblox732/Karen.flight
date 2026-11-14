@@ -115,9 +115,7 @@ async function initDashboard(){
     if(target.status!=="cancelled")return alert("لا يمكن حذف الرحلة إلا بعد تغيير حالتها إلى ملغاة.");
     if(management&&!owner&&(!target.cancelled_at||Date.now()-new Date(target.cancelled_at).getTime()<60*60*1000))return alert("لازم تمر ساعة كاملة على إلغاء الرحلة قبل أن تتمكن الإدارة من حذفها.");
     if(!confirm("متأكد من حذف الرحلة الملغاة نهائياً؟ ما تقدر تتراجع عن الحذف."))return;
-    const {count,error:bookingCheckError}=await sb.from("bookings").select("id",{count:"exact",head:true}).eq("flight_id",id);
-    if(bookingCheckError)return alert("تعذر التحقق من حجوزات الرحلة: "+bookingCheckError.message);
-    if(count>0)return alert("ما تقدر تحذف الرحلة لأن عليها حجوزات. احتفظ بها كملغاة حتى ما تضيع بيانات المسافرين.");
+    if(!confirm("تنبيه: سيتم حذف الرحلة الملغاة وجميع الحجوزات المرتبطة بها نهائياً. هل تريد المتابعة؟"))return;
     result=await sb.from("flights").delete().eq("id",id);
    }
   if(action==="join")result=await sb.from("flight_staff_members").insert({flight_id:id,employee_user_id:uid,role,roblox_username:emp.roblox_username});

@@ -8,3 +8,72 @@
 @media(max-width:650px){.nav{height:auto;min-height:66px;flex-wrap:wrap;padding:9px 0}.nav-actions{width:100%;flex-wrap:wrap}.nav-actions .btn{flex:1}.form-grid{grid-template-columns:1fr}.page-head h1{font-size:27px}.form-card{padding:18px}}
 
 @media(max-width:560px){.nav-actions .btn.ghost{display:block!important}}
+
+/* KAREN AIRLINES — premium identity refresh */
+:root{color-scheme:dark;--bg:#071321;--panel:#0d1d30;--panel2:#122740;--line:#263c53;--text:#f6f1e7;--muted:#aeb9c5;--accent:#c9a86b;--accent2:#efd9a8;--danger:#e17d7d;--ok:#83c4a1;--radius:22px;--shadow:0 24px 70px #02081299}
+html{background:var(--bg)}
+body{background:radial-gradient(ellipse at 50% -20%,#1a3450 0,transparent 48%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;letter-spacing:.01em}
+::selection{background:#c9a86b55;color:#fff}
+.topbar{background:#071321eF;border-bottom:1px solid #c9a86b30;box-shadow:0 8px 30px #02081235}
+.nav{min-height:82px}
+.brand{gap:12px;letter-spacing:1.7px;font-size:16px}
+.brand-logo{width:50px;height:50px;object-fit:contain;filter:drop-shadow(0 5px 12px #c9a86b25)}
+.brand-copy{display:flex;flex-direction:column;line-height:1.12;gap:5px}
+.brand-copy strong{font:800 17px/1 Manrope,system-ui,sans-serif;letter-spacing:2.2px}
+.brand-copy small{font:600 9px/1 system-ui,sans-serif;letter-spacing:3.2px;color:var(--accent2)}
+.navlinks{gap:30px}
+.navlinks a{font-size:13px;letter-spacing:.2px;transition:color .2s}
+.navlinks a:hover,.navlinks a.active{color:var(--accent2)}
+.btn{border-color:#354b61;background:linear-gradient(180deg,#172c43,#102238);border-radius:13px;padding:11px 18px;box-shadow:0 5px 16px #02081220}
+.btn:hover{border-color:var(--accent);box-shadow:0 8px 24px #c9a86b1c}
+.btn.primary{background:linear-gradient(135deg,#ecd7a6,#bd9658);color:#101b29;border-color:#e4c98f;box-shadow:0 8px 22px #c9a86b30}
+.btn.primary:hover{filter:brightness(1.06)}
+.hero{padding-top:82px;min-height:610px}
+.eyebrow{color:var(--accent2);letter-spacing:1.7px;font-size:11px}
+.dot{background:var(--accent);box-shadow:0 0 0 5px #c9a86b20}
+.hero h1{font-size:clamp(46px,6vw,76px);line-height:1.12;letter-spacing:-1.8px}
+.hero h1 span{color:var(--accent2)}
+.hero p{color:#bdc7d1;line-height:2;font-size:16px}
+.hero-art{min-height:420px;border:1px solid #c9a86b4a;border-radius:30px;background:radial-gradient(ellipse at 50% 42%,#c9a86b25,transparent 48%),linear-gradient(145deg,#132a43,#081525 70%);box-shadow:0 30px 90px #02081288,inset 0 1px #ffffff12}
+.hero-art:before{width:310px;height:310px;right:calc(50% - 155px);top:8%;border-color:#c9a86b4a;box-shadow:0 0 0 24px #c9a86b0a,0 0 0 55px #c9a86b08}
+.hero-art:after{content:"";position:absolute;inset:16px;border:1px solid #ffffff0b;border-radius:22px;pointer-events:none}
+.hero-emblem{position:absolute;width:min(78%,340px);height:auto;inset:50% auto auto 50%;transform:translate(-50%,-52%);filter:drop-shadow(0 22px 28px #0009)}
+.art-caption{z-index:1;bottom:26px;right:28px;left:28px}
+.art-caption strong{font:800 18px Manrope,system-ui,sans-serif;letter-spacing:3px}
+.art-caption small{letter-spacing:2px;color:var(--accent2);margin-top:5px}
+.stat{background:#071321c9;border:1px solid #c9a86b55;border-radius:15px}
+.stat b{color:var(--accent2);letter-spacing:2px}
+.section{padding:66px 0}
+.section-head h2,.page-head h1{letter-spacing:-.6px}
+.feature,.flight-card,.booking-box,.form-card,.dash-stat,.dash-panel{background:linear-gradient(150deg,#11253a,#0b1a2c 75%);border:1px solid #30445a;box-shadow:0 14px 40px #02081235}
+.feature,.flight-card{border-radius:20px;transition:transform .25s,border-color .25s,box-shadow .25s}
+.feature:hover,.flight-card:hover{transform:translateY(-4px);border-color:#c9a86b88;box-shadow:0 22px 46px #02081255}
+.feature-icon{background:#c9a86b1b;color:var(--accent2);border:1px solid #c9a86b33}
+.feature h3{font-size:16px}
+.feature p,.page-head p{line-height:1.9}
+.booking-box{border-radius:22px;padding:26px}
+.flight-card{padding:22px}
+.flight-no{color:var(--accent2);letter-spacing:1.2px}
+.route-line{color:var(--accent)}
+.route-line:before{background:#3a4b5f}
+.flight-bottom{border-color:#30445a}
+.status{background:#83c4a11c;color:#9cdbb7}
+.field input,.field select{background:#071523;border:1px solid #31475d;border-radius:12px;color:var(--text);padding:13px}
+.field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #c9a86b1b}
+.page{padding-top:48px}
+.page-head{margin-bottom:28px}
+.page-head h1{font-size:clamp(28px,4vw,38px)}
+.form-card{border-radius:23px;padding:28px}
+.dash-head h1{letter-spacing:-.7px}
+.dash-stat{border-radius:18px}
+.dash-stat b{color:var(--accent2)}
+.dash-panel{border-radius:20px;padding:23px}
+.data-table th{color:var(--accent2);background:#c9a86b0a}
+.data-table th,.data-table td{border-bottom-color:#2a4056;padding:13px 12px}
+.data-table tbody tr:hover{background:#ffffff06}
+.footer{border-top:1px solid #c9a86b30;background:#06111e88}
+.footer-inner{align-items:center}
+.page-links a{color:var(--accent2);text-underline-offset:4px}
+.notice,.hint{color:#aeb9c5}
+@media(max-width:850px){.hero{padding-top:50px;min-height:auto}.hero-art{min-height:360px}}
+@media(max-width:560px){.nav{min-height:66px}.brand-logo{width:42px;height:42px}.brand-copy strong{font-size:14px}.brand-copy small{font-size:8px}.hero{gap:28px;padding-top:38px}.hero-art{min-height:280px}.hero-emblem{width:74%}.hero-art:before{width:220px;height:220px;right:calc(50% - 110px)}.booking-box,.form-card{padding:18px}.dash-panel{padding:16px}}

@@ -27,58 +27,104 @@ async function initDashboard(){
  const {data:emp}=await sb.from("employees").select("*").eq("user_id",s.session.user.id).eq("active",true).maybeSingle();
  if(!emp){await sb.auth.signOut();return location.replace("employee-login.html")}
  window.currentEmployee=emp;
- const role=emp.role;
+ const role=emp.role, uid=s.session.user.id;
+ const owner=role==="owner", management=["management","admin"].includes(role), pilot=role==="pilot";
+ const crew=["co_pilot","cabin_crew","ground_staff"].includes(role);
  const roleInfo={
-  pilot:{name:"Pilot · الطيار",about:"مسؤول عن قيادة الطائرة وتنفيذ الرحلة حسب خطة الطيران.",tasks:["مراجعة جدول الرحلات والمسار والموعد والطائرة","الاطلاع على تفاصيل الرحلات وحالتها"],access:"عرض الرحلات فقط. لا يملك تعديل الحجوزات أو إنشاء الرحلات."},
-  co_pilot:{name:"Co-Pilot · مساعد الطيار",about:"يساند الطيار في التحضير للرحلة ومتابعة معلوماتها.",tasks:["مراجعة جدول الرحلات وبيانات الطائرة","متابعة حالة الرحلة وتفاصيل المسار"],access:"عرض الرحلات فقط."},
-  cabin_crew:{name:"Cabin Crew · طاقم الضيافة",about:"مسؤول عن خدمة المسافرين ومتابعة قائمة الركاب وتجهيز المقصورة.",tasks:["الاطلاع على الحجوزات وأسماء المسافرين","مراجعة الرحلات ومواعيدها","متابعة احتياجات المسافرين"],access:"عرض الرحلات والحجوزات دون قبولها أو رفضها أو تعديلها."},
-  ground_staff:{name:"Ground Crew · الطاقم الأرضي",about:"مسؤول عن إجراءات المسافرين قبل الصعود وتنظيم خدمات المطار.",tasks:["مراجعة طلبات الحجز","قبول أو رفض طلبات الحجز","متابعة الرحلات وحالات الصعود"],access:"عرض الرحلات والحجوزات وتحديث حالة طلب الحجز. لا ينشئ الرحلات ولا يدير الموظفين."},
-  management:{name:"Management · الإدارة",about:"تدير عمليات الشركة اليومية وتتابع الرحلات والحجوزات.",tasks:["إنشاء الرحلات وتعديل بياناتها وحالاتها","مراجعة الحجوزات وقبولها أو رفضها"],access:"إدارة الرحلات والحجوزات. إنشاء حسابات الموظفين وإدارة المالك محصورة بالمالك."},
-  admin:{name:"Management · الإدارة",about:"تدير عمليات الشركة اليومية وتتابع الرحلات والحجوزات.",tasks:["إنشاء الرحلات وتعديل بياناتها وحالاتها","مراجعة الحجوزات وقبولها أو رفضها"],access:"إدارة الرحلات والحجوزات دون إنشاء حسابات الموظفين."},
-  owner:{name:"Owner · المالك",about:"المسؤول الأعلى عن الشركة وإدارة النظام.",tasks:["الإشراف على عمليات الشركة والرحلات والحجوزات","إنشاء حسابات الموظفين وتحديد وظائفهم","الاطلاع على قائمة الموظفين"],access:"جميع صلاحيات الرحلات والحجوزات وإدارة حسابات الموظفين."}
+  pilot:{name:"Pilot · الطيار",about:"ينشئ طلب الرحلة ويقودها بعد اعتمادها من المالك والإدارة.",tasks:["إنشاء طلب رحلة وإرساله للمالك","بعد اعتماد المالك والإدارة يبدأ الرحلة أو يوقفها","متابعة الطاقم المرتبط برحلته"],access:"إدارة طلباته وبدء أو إيقاف رحلاته المعتمدة فقط."},
+  co_pilot:{name:"Co-Pilot · مساعد الطيار",about:"ينضم إلى رحلة الطيار المحددة ويسانده في متابعة تفاصيلها.",tasks:["الانضمام إلى رحلة معتمدة يشغلها طيار","عرض بيانات الرحلة والطاقم","الانسحاب من الرحلة"],access:"الانضمام إلى رحلة واحدة كمساعد طيار والانسحاب منها."},
+  cabin_crew:{name:"Cabin Crew · طاقم الضيافة",about:"ينضم إلى الرحلات لمتابعة معلومات الرحلة وقائمة المسافرين.",tasks:["الانضمام إلى الرحلات المعتمدة","عرض بيانات الرحلة والمسار والموعد","متابعة قائمة المسافرين والحجوزات"],access:"عرض معلومات الرحلة والحجوزات والانسحاب من الرحلة."},
+  ground_staff:{name:"Ground Crew · الطاقم الأرضي",about:"يتابع تجهيز الرحلات وإجراءات المسافرين قبل الصعود.",tasks:["الانضمام إلى الرحلات المعتمدة","عرض بيانات الرحلة والطاقم","متابعة قائمة المسافرين والحجوزات"],access:"عرض معلومات الرحلة والحجوزات والانسحاب من الرحلة."},
+  management:{name:"Management · الإدارة",about:"تراجع طلبات الرحلات بعد موافقة المالك وتدير اعتماد التشغيل.",tasks:["مراجعة الرحلات التي اعتمدها المالك","اعتماد الرحلة للتشغيل أو رفضها","متابعة الرحلات والحجوزات وإدارة حالاتها"],access:"اعتماد تشغيل الرحلات وإدارة الرحلات والحجوزات."},
+  admin:{name:"Management · الإدارة",about:"تراجع طلبات الرحلات بعد موافقة المالك وتدير اعتماد التشغيل.",tasks:["مراجعة الرحلات التي اعتمدها المالك","اعتماد الرحلة للتشغيل أو رفضها","متابعة الرحلات والحجوزات وإدارة حالاتها"],access:"اعتماد تشغيل الرحلات وإدارة الرحلات والحجوزات."},
+  owner:{name:"Owner · المالك",about:"يراجع طلبات الطيارين ويمنح الموافقة الأولى قبل انتقالها للإدارة.",tasks:["مراجعة طلبات الرحلات والموافقة أو الرفض","الإشراف على الرحلات والحجوزات","إنشاء حسابات الموظفين وتحديد وظائفهم"],access:"الموافقة الأولى على الرحلات وإدارة الموظفين والرحلات والحجوزات."}
  };
- const info=roleInfo[role]||{name:role,about:"موظف في Karen Flight.",tasks:["مراجعة المهام المصرح بها"],access:"صلاحيات محدودة حسب الوظيفة."};
+ const info=roleInfo[role]||{name:role,about:"موظف في Karen Flight.",tasks:[],access:"حسب الوظيفة."};
  $("dashUser").textContent=emp.roblox_username+" · "+info.name;
- const head=document.querySelector(".dash-head");
- const roleBox=document.createElement("section");
- roleBox.className="dash-panel";
+ const roleBox=document.createElement("section");roleBox.className="dash-panel";
  roleBox.innerHTML='<h2>وظيفتك في Karen Flight</h2><p><b>'+esc(info.name)+'</b></p><p>'+esc(info.about)+'</p><h3>مهامك</h3><ul>'+info.tasks.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul><p><b>صلاحياتك:</b> '+esc(info.access)+'</p>';
- head?.insertAdjacentElement("afterend",roleBox);
- const manager=["owner","management","admin"].includes(role);
+ document.querySelector(".dash-head")?.insertAdjacentElement("afterend",roleBox);
  const canSeeBookings=["owner","management","admin","ground_staff","cabin_crew"].includes(role);
  const canChangeBookings=["owner","management","admin","ground_staff"].includes(role);
- const canSeeFlights=["pilot","co_pilot","cabin_crew","ground_staff"].includes(role);
- $("flightAdminPanel").classList.toggle("hidden",!manager);
- $("employeePanel").classList.toggle("hidden",role!=="owner");
- const bookingsPanel=$("bookingsPanel")||$("adminBookings")?.closest(".dash-panel");
- bookingsPanel?.classList.toggle("hidden",!canSeeBookings);
- if(role==="cabin_crew")$("adminBookings")?.closest(".dash-panel")?.querySelectorAll("[data-booking]").forEach(x=>x.remove());
- const staffPanel=$("staffFlightsPanel");
- staffPanel?.classList.toggle("hidden",!canSeeFlights);
- const bookingTitle=$("adminBookings")?.closest(".dash-panel")?.querySelector("h2");
- if(bookingTitle&&role==="cabin_crew")bookingTitle.textContent="قائمة المسافرين والحجوزات · عرض فقط";
+ const canSeeFlights=true;
+ $("flightAdminPanel").classList.toggle("hidden",!(pilot||owner||management));
+ $("employeePanel").classList.toggle("hidden",!owner);
+ $("bookingsPanel")?.classList.toggle("hidden",!canSeeBookings);
+ $("staffFlightsPanel")?.classList.toggle("hidden",!canSeeFlights);
+ const form=$("flightForm");
+ if(form){
+  if(pilot){form.querySelector("button[type=submit]").textContent="إرسال طلب الرحلة للمالك";$("fStatus").value="scheduled";$("fStatus").closest(".field")?.classList.add("hidden")}
+  else if(owner){form.querySelector("button[type=submit]").textContent="إنشاء رحلة معتمدة";$("fStatus").closest(".field")?.classList.remove("hidden")}
+  else form.classList.add("hidden");
+ }
+ const flightPanel=$("flightAdminPanel");
+ if(flightPanel){const heading=flightPanel.querySelector("h2");if(heading)heading.textContent=pilot?"طلباتي من الرحلات":owner?"مراجعة طلبات الطيارين وإدارة الرحلات":"اعتماد الرحلات ومتابعة التشغيل"}
+ const bookingTitle=$("bookingsPanel")?.querySelector("h2");if(bookingTitle&&role==="cabin_crew")bookingTitle.textContent="قائمة المسافرين والحجوزات · عرض فقط";
  async function refresh(){
-  const flightQuery=sb.from("flights").select("*").order("departure_at",{ascending:false}).limit(60);
-  const bookingQuery=canSeeBookings?sb.from("bookings").select("*,flights(flight_number,origin_code,destination_code)").order("created_at",{ascending:false}).limit(80):Promise.resolve({data:[]});
-  const employeeQuery=role==="owner"?sb.from("employees").select("roblox_username,employee_id,role,active").order("created_at",{ascending:false}).limit(80):Promise.resolve({data:[]});
-  const [{count:fc},{count:bc},{count:pc},{data:fs},{data:bs},{data:es}]=await Promise.all([
+  const [{count:fc},{count:bc},{count:pc},{data:fs,error:fe},{data:bs},{data:es},{data:members}]=await Promise.all([
    sb.from("flights").select("*",{count:"exact",head:true}),
    canSeeBookings?sb.from("bookings").select("*",{count:"exact",head:true}):Promise.resolve({count:null}),
    canSeeBookings?sb.from("bookings").select("*",{count:"exact",head:true}).eq("status","pending"):Promise.resolve({count:null}),
-   flightQuery,bookingQuery,employeeQuery
+   sb.from("flights").select("*").order("created_at",{ascending:false}).limit(100),
+   canSeeBookings?sb.from("bookings").select("*,flights(flight_number,origin_code,destination_code)").order("created_at",{ascending:false}).limit(100):Promise.resolve({data:[]}),
+   owner?sb.from("employees").select("roblox_username,employee_id,role,active").order("created_at",{ascending:false}).limit(100):Promise.resolve({data:[]}),
+   sb.from("flight_staff_members").select("flight_id,employee_user_id,role")
   ]);
+  if(fe)console.error(fe);
   $("statFlights").textContent=fc??"—";$("statBookings").textContent=bc??"—";$("statPending").textContent=pc??"—";
-  $("adminFlights").innerHTML=(manager?(fs||[]):[]).map(f=>'<tr><td>'+esc(f.flight_number)+'</td><td>'+esc(f.origin_code)+' → '+esc(f.destination_code)+'</td><td>'+dateLabel(f.departure_at)+'</td><td>'+esc(f.status)+'</td><td><button class="btn small" data-flight="'+f.id+'" data-status="delayed">تأخير</button> <button class="btn small" data-flight="'+f.id+'" data-status="cancelled">إلغاء</button> <button class="btn small" data-flight="'+f.id+'" data-status="closed">إغلاق</button></td></tr>').join("");
+  const allFlights=fs||[], crewRows=members||[];
+  const employeeIds=[...new Set(crewRows.map(x=>x.employee_user_id))];
+  let employeeNames={};
+  if(employeeIds.length){const {data:names}=await sb.from("employees").select("user_id,roblox_username,role").in("user_id",employeeIds);(names||[]).forEach(x=>employeeNames[x.user_id]=x.roblox_username+" ("+x.role+")")}
+  const roster=f=>crewRows.filter(x=>x.flight_id===f.id).map(x=>esc(employeeNames[x.employee_user_id]||x.role)).join("، ")||"لم ينضم طاقم بعد";
+  const statusName=f=>f.status==="boarding"?"بدأت":f.status==="closed"?"متوقفة/مغلقة":f.status==="delayed"?"متأخرة":f.status==="cancelled"?"ملغاة":"مجدولة";
+  const flightActions=f=>{
+   const actions=[];
+   if(owner&&!f.owner_approved&&!f.management_approved)actions.push('<button class="btn small primary" data-flight-action="owner-approve" data-id="'+f.id+'">موافقة المالك</button><button class="btn small" data-flight-action="reject" data-id="'+f.id+'">رفض</button>');
+   if(management&&f.owner_approved&&!f.management_approved)actions.push('<button class="btn small primary" data-flight-action="management-approve" data-id="'+f.id+'">اعتماد الإدارة</button><button class="btn small" data-flight-action="reject" data-id="'+f.id+'">رفض</button>');
+   if(pilot&&f.pilot_user_id===uid&&f.owner_approved&&f.management_approved&&f.status!=="cancelled")actions.push(f.status==="boarding"?'<button class="btn small" data-flight-action="stop" data-id="'+f.id+'">إيقاف الرحلة</button>':'<button class="btn small primary" data-flight-action="start" data-id="'+f.id+'">بدء الرحلة</button>');
+   if(crew&&f.owner_approved&&f.management_approved&&["scheduled","boarding","delayed"].includes(f.status)){
+    const mine=crewRows.find(x=>x.flight_id===f.id&&x.employee_user_id===uid);
+    if(mine)actions.push('<button class="btn small" data-flight-action="leave" data-id="'+f.id+'">انسحاب</button>');
+    else if(role!=="co_pilot"||!crewRows.some(x=>x.flight_id===f.id&&x.role==="co_pilot"))actions.push('<button class="btn small primary" data-flight-action="join" data-id="'+f.id+'">انضمام للرحلة</button>');
+   }
+   return actions.join(" ")||"—";
+  };
+  const relevant=pilot?allFlights.filter(f=>f.pilot_user_id===uid):allFlights;
+  $("adminFlights").innerHTML=relevant.map(f=>'<tr><td>'+esc(f.flight_number)+'</td><td>'+esc(f.origin_code)+' → '+esc(f.destination_code)+'</td><td>'+dateLabel(f.departure_at)+'</td><td>'+statusName(f)+'<br><small>المالك: '+(f.owner_approved?"موافق":"بانتظار الموافقة")+' · الإدارة: '+(f.management_approved?"معتمدة":"بانتظار الاعتماد")+'</small></td><td>'+flightActions(f)+'</td></tr>').join("")||'<tr><td colspan="5">ما فيه رحلات حالياً.</td></tr>';
   $("adminBookings").innerHTML=(bs||[]).map(b=>'<tr><td>'+esc(b.passenger_name)+'</td><td>'+esc(b.roblox_username)+'</td><td>'+esc(b.flights?.flight_number||"—")+'</td><td>'+esc(b.status)+'</td><td>'+(canChangeBookings?'<button class="btn small" data-booking="'+b.id+'" data-status="approved">قبول</button> <button class="btn small" data-booking="'+b.id+'" data-status="rejected">رفض</button>':'عرض فقط')+'</td></tr>').join("");
   $("adminEmployees").innerHTML=(es||[]).map(x=>'<tr><td>'+esc(x.roblox_username)+'</td><td>'+esc(x.employee_id)+'</td><td>'+esc(roleInfo[x.role]?.name||x.role)+'</td><td>'+(x.active?"نشط":"موقوف")+'</td></tr>').join("");
-  if(staffPanel)$("staffFlights").innerHTML=(fs||[]).map(f=>'<tr><td>'+esc(f.flight_number)+'</td><td>'+esc(f.origin_code)+' → '+esc(f.destination_code)+'</td><td>'+dateLabel(f.departure_at)+'</td><td>'+esc(f.aircraft||"—")+'</td><td>'+esc(f.status)+'</td></tr>').join("");
+  $("staffFlights").innerHTML=allFlights.filter(f=>f.owner_approved&&f.management_approved&&["scheduled","boarding","delayed"].includes(f.status)).map(f=>'<tr><td>'+esc(f.flight_number)+'</td><td>'+esc(f.origin_code)+' → '+esc(f.destination_code)+'</td><td>'+dateLabel(f.departure_at)+'</td><td>'+esc(f.aircraft||"—")+'<br><small>'+roster(f)+'</small></td><td>'+statusName(f)+'<br>'+flightActions(f)+'</td></tr>').join("")||'<tr><td colspan="5">ما فيه رحلات معتمدة حالياً.</td></tr>';
  }
  await refresh();
  $("refresh")?.addEventListener("click",refresh);
- $("adminFlights")?.addEventListener("click",async e=>{if(!manager)return;const b=e.target.closest("[data-flight]");if(!b)return;const {error}=await sb.from("flights").update({status:b.dataset.status}).eq("id",b.dataset.flight);if(error)alert("تعذر تعديل الرحلة.");else refresh()});
+ $("adminFlights")?.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-flight-action]");if(!b)return;
+  const id=b.dataset.id,action=b.dataset.flightAction;let result;
+  if(action==="owner-approve")result=await sb.from("flights").update({owner_approved:true,owner_approved_by:uid,owner_approved_at:new Date().toISOString()}).eq("id",id);
+  if(action==="management-approve")result=await sb.from("flights").update({management_approved:true,management_approved_by:uid,management_approved_at:new Date().toISOString()}).eq("id",id).eq("owner_approved",true);
+  if(action==="reject")result=await sb.from("flights").update({status:"cancelled"}).eq("id",id);
+  if(action==="start")result=await sb.from("flights").update({status:"boarding"}).eq("id",id);
+  if(action==="stop")result=await sb.from("flights").update({status:"closed"}).eq("id",id);
+  if(action==="join")result=await sb.from("flight_staff_members").insert({flight_id:id,employee_user_id:uid,role});
+  if(action==="leave")result=await sb.from("flight_staff_members").delete().eq("flight_id",id).eq("employee_user_id",uid);
+  if(result?.error){alert("تعذر تنفيذ الإجراء: "+result.error.message);return}await refresh();
+ });
+ $("staffFlights")?.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-flight-action]");if(!b)return;
+  const id=b.dataset.id,action=b.dataset.flightAction;let result;
+  if(action==="join")result=await sb.from("flight_staff_members").insert({flight_id:id,employee_user_id:uid,role});
+  if(action==="leave")result=await sb.from("flight_staff_members").delete().eq("flight_id",id).eq("employee_user_id",uid);
+  if(result?.error){alert("تعذر تنفيذ الإجراء: "+result.error.message);return}await refresh();
+ });
  $("adminBookings")?.addEventListener("click",async e=>{if(!canChangeBookings)return;const b=e.target.closest("[data-booking]");if(!b)return;const {error}=await sb.from("bookings").update({status:b.dataset.status}).eq("id",b.dataset.booking);if(error)alert("تعذر تعديل الحجز.");else refresh()});
- $("flightForm")?.addEventListener("submit",async e=>{e.preventDefault();if(!manager)return;const row={flight_number:$("fNumber").value.trim().toUpperCase(),origin_code:$("fFrom").value.trim().toUpperCase(),destination_code:$("fTo").value.trim().toUpperCase(),departure_at:new Date($("fTime").value).toISOString(),aircraft:$("fAircraft").value.trim()||null,seats_total:Number($("fSeats").value),status:$("fStatus").value,created_by:s.session.user.id};const {error}=await sb.from("flights").insert(row);if(error)return alert("تعذرت إضافة الرحلة.");$("flightForm").reset();refresh()});
- $("employeeForm")?.addEventListener("submit",async e=>{e.preventDefault();if(role!=="owner")return alert("هذه الصلاحية للمالك فقط.");const r=await fetch(CFG.supabaseUrl+"/functions/v1/employee-create",{method:"POST",headers:{"Content-Type":"application/json","apikey":CFG.supabaseKey,"Authorization":"Bearer "+s.session.access_token},body:JSON.stringify({username:$("eUsername").value.trim(),employeeId:$("eId").value.trim(),role:$("eRole").value,password:$("ePassword").value})}),o=await r.json().catch(()=>({}));if(!r.ok)return alert(o.error||"تعذر إنشاء الموظف.");alert("تم إنشاء حساب الموظف.");$("employeeForm").reset();refresh()});
+ $("flightForm")?.addEventListener("submit",async e=>{
+  e.preventDefault();if(!pilot&&!owner)return;
+  const row={flight_number:$("fNumber").value.trim().toUpperCase(),origin_code:$("fFrom").value.trim().toUpperCase(),destination_code:$("fTo").value.trim().toUpperCase(),departure_at:new Date($("fTime").value).toISOString(),aircraft:$("fAircraft").value.trim()||null,seats_total:Number($("fSeats").value),status:owner?$("fStatus").value:"scheduled",created_by:uid,pilot_user_id:pilot?uid:null,owner_approved:owner,management_approved:owner};
+  const {error}=await sb.from("flights").insert(row);if(error)return alert("تعذر إرسال طلب الرحلة: "+error.message);
+  $("flightForm").reset();alert(pilot?"تم إرسال طلب الرحلة للمالك للموافقة.":"تم إنشاء الرحلة.");await refresh();
+ });
+ $("employeeForm")?.addEventListener("submit",async e=>{e.preventDefault();if(!owner)return alert("هذه الصلاحية للمالك فقط.");const r=await fetch(CFG.supabaseUrl+"/functions/v1/employee-create",{method:"POST",headers:{"Content-Type":"application/json","apikey":CFG.supabaseKey,"Authorization":"Bearer "+s.session.access_token},body:JSON.stringify({username:$("eUsername").value.trim(),employeeId:$("eId").value.trim(),role:$("eRole").value,password:$("ePassword").value})}),o=await r.json().catch(()=>({}));if(!r.ok)return alert(o.error||"تعذر إنشاء الموظف.");alert("تم إنشاء حساب الموظف.");$("employeeForm").reset();refresh()});
  $("logout")?.addEventListener("click",async()=>{await sb.auth.signOut();location.href="index.html"});
 }
 if(page==="flights")initFlights();if(page==="register")initRegister();if(page==="passenger-login")initPassengerLogin();if(page==="passenger-account")initPassengerAccount();if(page==="booking")initBooking();if(page==="employee-login")initEmployeeLogin();if(page==="dashboard")initDashboard();

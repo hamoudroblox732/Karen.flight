@@ -45,7 +45,7 @@ async function initDashboard(){
  roleBox.innerHTML='<h2>وظيفتك في Karen Flight</h2><p><b>'+esc(info.name)+'</b></p><p>'+esc(info.about)+'</p><h3>مهامك</h3><ul>'+info.tasks.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul><p><b>صلاحياتك:</b> '+esc(info.access)+'</p>';
  document.querySelector(".dash-head")?.insertAdjacentElement("afterend",roleBox);
  const canSeeBookings=["owner","management","admin","ground_staff","cabin_crew"].includes(role);
- const canChangeBookings=["owner","management","admin","ground_staff"].includes(role);
+ const canChangeBookings=["owner","management","admin"].includes(role);
  const canSeeFlights=true;
  $("flightAdminPanel").classList.toggle("hidden",!(pilot||owner||management));
  $("employeePanel").classList.toggle("hidden",!owner);

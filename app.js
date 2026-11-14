@@ -15,7 +15,7 @@ async function initPassengerAccount(){
  const {data:a}=await sb.from("passenger_accounts").select("user_id,roblox_username").eq("user_id",s.session.user.id).maybeSingle();
  if(!a){await sb.auth.signOut();return location.replace("passenger-login.html")}
  $("welcome").textContent="أهلاً "+a.roblox_username;
- const {data:rows,error}=await sb.from("bookings").select("id,status,passenger_class,created_at,flight_number_snapshot,origin_code_snapshot,destination_code_snapshot,departure_at_snapshot,aircraft_snapshot,flight_status_snapshot,server_url_snapshot,flights(flight_number,origin_code,destination_code,departure_at,aircraft,status,server_url)").eq("passenger_user_id",a.user_id).order("created_at",{ascending:false});
+ const {data:rows,error}=await sb.from("bookings").select("id,flight_id,status,passenger_class,created_at,flight_number_snapshot,origin_code_snapshot,destination_code_snapshot,departure_at_snapshot,aircraft_snapshot,flight_status_snapshot,server_url_snapshot,flights(flight_number,origin_code,destination_code,departure_at,aircraft,status,server_url)").eq("passenger_user_id",a.user_id).order("created_at",{ascending:false});
  const cls={economy:"اقتصادي",business:"بزنس",first:"فرست كلاس"};
  const state={scheduled:"مجدولة",boarding:"صعود الركاب",delayed:"متأخرة",in_progress:"بدأت",stopped:"متوقفة",closed:"مغلقة",cancelled:"ملغاة",deleted:"محذوفة"};
  $("bookingHistory").innerHTML=error?"تعذر تحميل الحجوزات.":rows.length?rows.map(b=>{
@@ -100,6 +100,7 @@ async function initDashboard(){
     if(canDeleteCancelled)actions.push('<button class="btn small" data-flight-action="delete" data-id="'+f.id+'" style="color:#c65b5b;border-color:#c65b5b">حذف الرحلة</button>');
    if(management&&f.owner_approved&&!f.management_approved)actions.push('<button class="btn small primary" data-flight-action="management-approve" data-id="'+f.id+'">اعتماد الإدارة</button><button class="btn small" data-flight-action="reject" data-id="'+f.id+'">رفض</button>');
    if((owner||management)&&f.owner_approved&&f.management_approved&&f.server_url&&!f.crew_link_approved)actions.push('<button class="btn small primary" data-flight-action="crew-release" data-id="'+f.id+'">إتاحة رابط الموظفين</button>');
+   if((owner||management||(pilot&&f.pilot_user_id===uid))&&f.status!=="cancelled")actions.push('<button class="btn small" data-flight-action="edit-link" data-id="'+f.id+'">تعديل رابط السيرفر</button>');
    if(pilot&&f.pilot_user_id===uid&&f.owner_approved&&f.management_approved){if(f.status==="in_progress")actions.push('<button class="btn small" data-flight-action="stop" data-id="'+f.id+'">إيقاف الرحلة</button>');else if(["scheduled","delayed"].includes(f.status))actions.push('<button class="btn small primary" data-flight-action="start" data-id="'+f.id+'">بدء الرحلة</button>')}
    if(crew&&f.owner_approved&&f.management_approved&&["scheduled","boarding","delayed"].includes(f.status)){
     const mine=crewRows.find(x=>x.flight_id===f.id&&x.employee_user_id===uid);
@@ -122,6 +123,7 @@ async function initDashboard(){
   if(action==="owner-approve")result=await sb.from("flights").update({owner_approved:true,owner_approved_by:uid,owner_approved_at:new Date().toISOString()}).eq("id",id);
   if(action==="management-approve")result=await sb.from("flights").update({management_approved:true,management_approved_by:uid,management_approved_at:new Date().toISOString()}).eq("id",id).eq("owner_approved",true);
   if(action==="crew-release"){if(!owner&&!management)return alert("غير مصرح");result=await sb.from("flights").update({crew_link_approved:true,crew_link_approved_at:new Date().toISOString()}).eq("id",id);}
+  if(action==="edit-link"){const {data:f}=await sb.from("flights").select("server_url").eq("id",id).maybeSingle();const url=prompt("ضع رابط سيرفر الرحلة:",f?.server_url||"");if(url===null)return;if(url.trim()&&!/^https?:\/\//i.test(url.trim()))return alert("الرابط لازم يبدأ بـ https:// أو http://");result=await sb.from("flights").update({server_url:url.trim()||null,crew_link_approved:false,crew_link_approved_at:null}).eq("id",id);}
   if(action==="reject")result=await sb.from("flights").update({status:"cancelled"}).eq("id",id);
   if(action==="start")result=await sb.from("flights").update({status:"in_progress"}).eq("id",id);
   if(action==="stop")result=await sb.from("flights").update({status:"stopped"}).eq("id",id);
@@ -148,7 +150,14 @@ async function initDashboard(){
   if(result?.error){alert("تعذر تنفيذ الإجراء: "+result.error.message);return}await refresh();
  });
   $("adminEmployees")?.addEventListener("click",async e=>{const b=e.target.closest("[data-delete-employee]");if(!b||!owner)return;const username=b.dataset.employeeName;if(!confirm("متأكد من حذف هوية الموظف "+username+"؟ سيتم حذف حساب دخوله وإزالته من قائمة الموظفين، ولا يمكن التراجع."))return;const r=await fetch(CFG.supabaseUrl+"/functions/v1/employee-delete",{method:"POST",headers:{"Content-Type":"application/json","apikey":CFG.supabaseKey,"Authorization":"Bearer "+s.session.access_token},body:JSON.stringify({userId:b.dataset.deleteEmployee})});const out=await r.json().catch(()=>({}));if(!r.ok)return alert(out.error||"تعذر حذف هوية الموظف.");alert("تم حذف هوية الموظف.");await refresh()});
-$("adminBookings")?.addEventListener("click",async e=>{if(!canChangeBookings)return;const b=e.target.closest("[data-booking]");if(!b||b.dataset.status!=="rejected")return;if(!confirm("متأكد من رفض هذا الحجز؟"))return;const {error}=await sb.from("bookings").update({status:"rejected"}).eq("id",b.dataset.booking);if(error)alert("تعذر رفض الحجز.");else refresh()});
+const premiumPanel=$("premiumAssignPanel");
+ if(premiumPanel){
+  premiumPanel.classList.toggle("hidden",!(owner||management));
+  $("premiumFlight").innerHTML='<option value="">اختر الرحلة</option>'+allFlights.filter(x=>x.status!=="cancelled").map(x=>'<option value="'+esc(x.id)+'">'+esc(x.flight_number)+' · '+esc(x.origin_code)+' → '+esc(x.destination_code)+'</option>').join("");
+  $("registeredPassengers").innerHTML=(passengers||[]).map(x=>'<option value="'+esc(x.roblox_username)+'"></option>').join("");
+  $("premiumAssignForm")?.addEventListener("submit",async e=>{e.preventDefault();if(!owner&&!management)return;const {error}=await sb.rpc("assign_passenger_class",{p_flight_id:$("premiumFlight").value,p_username:$("premiumUsername").value.trim(),p_class:$("premiumClass").value});if(error)return alert("تعذر تعيين الفئة: "+error.message);alert("تم تحديث فئة المسافر.");$("premiumAssignForm").reset()});
+ }
+ $("adminBookings")?.addEventListener("click",async e=>{if(!canChangeBookings)return;const b=e.target.closest("[data-booking]");if(!b||b.dataset.status!=="rejected")return;if(!confirm("متأكد من رفض هذا الحجز؟"))return;const {error}=await sb.from("bookings").update({status:"rejected"}).eq("id",b.dataset.booking);if(error)alert("تعذر رفض الحجز.");else refresh()});
  $("flightForm")?.addEventListener("submit",async e=>{
   e.preventDefault();if(!pilot&&!owner)return;
   const originCode=$("fFrom").value.trim().toUpperCase(),destinationCode=$("fTo").value.trim().toUpperCase();if(originCode===destinationCode)return alert("مطار الإقلاع والوصول لازم يكونون مختلفين.");

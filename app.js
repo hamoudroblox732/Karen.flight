@@ -117,7 +117,8 @@ async function initDashboard(){
  $("adminBookings")?.addEventListener("click",async e=>{if(!canChangeBookings)return;const b=e.target.closest("[data-booking]");if(!b)return;const {error}=await sb.from("bookings").update({status:b.dataset.status}).eq("id",b.dataset.booking);if(error)alert("تعذر تعديل الحجز.");else refresh()});
  $("flightForm")?.addEventListener("submit",async e=>{
   e.preventDefault();if(!pilot&&!owner)return;
-  const row={flight_number:$("fNumber").value.trim().toUpperCase(),origin_code:$("fFrom").value.trim().toUpperCase(),destination_code:$("fTo").value.trim().toUpperCase(),departure_at:new Date($("fTime").value).toISOString(),aircraft:$("fAircraft").value.trim()||null,seats_total:Number($("fSeats").value),status:owner?$("fStatus").value:"scheduled",created_by:uid,pilot_user_id:pilot?uid:null,owner_approved:owner,management_approved:owner};
+  const originCode=$("fFrom").value.trim().toUpperCase(),destinationCode=$("fTo").value.trim().toUpperCase();if(originCode===destinationCode)return alert("مطار الإقلاع والوصول لازم يكونون مختلفين.");
+  const row={flight_number:$("fNumber").value.trim().toUpperCase(),origin_code:originCode,destination_code:destinationCode,departure_at:new Date($("fTime").value).toISOString(),aircraft:$("fAircraft").value.trim()||null,seats_total:Number($("fSeats").value),status:owner?$("fStatus").value:"scheduled",created_by:uid,pilot_user_id:pilot?uid:null,owner_approved:owner,management_approved:owner};
   const {error}=await sb.from("flights").insert(row);if(error)return alert("تعذر إرسال طلب الرحلة: "+error.message);
   $("flightForm").reset();alert(pilot?"تم إرسال طلب الرحلة للمالك للموافقة.":"تم إنشاء الرحلة.");await refresh();
  });

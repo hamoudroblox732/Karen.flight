@@ -41,9 +41,6 @@ async function initDashboard(){
  };
  const info=roleInfo[role]||{name:role,about:"موظف في Karen Flight.",tasks:[],access:"حسب الوظيفة."};
  $("dashUser").textContent=emp.roblox_username+" · "+info.name;
- const roleBox=document.createElement("section");roleBox.className="dash-panel";
- roleBox.innerHTML='<h2>وظيفتك في Karen Flight</h2><p><b>'+esc(info.name)+'</b></p><p>'+esc(info.about)+'</p><h3>مهامك</h3><ul>'+info.tasks.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul><p><b>صلاحياتك:</b> '+esc(info.access)+'</p>';
- document.querySelector(".dash-head")?.insertAdjacentElement("afterend",roleBox);
  const canSeeBookings=["owner","management","admin","ground_staff","cabin_crew"].includes(role);
  const canChangeBookings=["owner","management","admin"].includes(role);
  const canSeeFlights=true;
@@ -74,7 +71,12 @@ async function initDashboard(){
   $("statFlights").textContent=fc??"—";$("statBookings").textContent=bc??"—";$("statPending").textContent=pc??"—";
   const allFlights=fs||[], crewRows=members||[];
   const roster=f=>crewRows.filter(x=>x.flight_id===f.id).map(x=>esc(x.roblox_username||x.role)).join("، ")||"لم ينضم طاقم بعد";
-  const statusName=f=>f.status==="boarding"?"بدأت":f.status==="closed"?"متوقفة/مغلقة":f.status==="delayed"?"متأخرة":f.status==="cancelled"?"ملغاة":"مجدولة";
+  const statusName=f=>({scheduled:"مجدولة",boarding:"صعود الركاب",delayed:"متأخرة",in_progress:"بدأت",stopped:"متوقفة",closed:"مغلقة",cancelled:"ملغاة"}[f.status]||f.status);
+  const statusEditor=f=>{
+   if(!(owner||(management&&f.owner_approved)))return "";
+   const options=[["scheduled","مجدولة"],["boarding","صعود الركاب"],["delayed","متأخرة"],["in_progress","بدأت"],["stopped","متوقفة"],["closed","مغلقة"],["cancelled","ملغاة"]];
+   return '<div class="actions" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px"><select aria-label="تغيير حالة الرحلة" data-flight-status="'+f.id+'" style="max-width:145px">'+options.map(([v,l])=>'<option value="'+v+'" '+(f.status===v?'selected':'')+'>'+l+'</option>').join("")+'</select><button class="btn small" data-flight-action="set-status" data-id="'+f.id+'">حفظ الحالة</button></div>';
+  };
   const flightActions=f=>{
    const actions=[];
    if(owner&&!f.owner_approved&&!f.management_approved)actions.push('<button class="btn small primary" data-flight-action="owner-approve" data-id="'+f.id+'">موافقة المالك</button><button class="btn small" data-flight-action="reject" data-id="'+f.id+'">رفض</button>');
@@ -88,7 +90,7 @@ async function initDashboard(){
    return actions.join(" ")||"—";
   };
   const relevant=pilot?allFlights.filter(f=>f.pilot_user_id===uid):allFlights;
-  $("adminFlights").innerHTML=relevant.map(f=>'<tr><td>'+esc(f.flight_number)+'</td><td>'+esc(f.origin_code)+' → '+esc(f.destination_code)+'</td><td>'+dateLabel(f.departure_at)+'</td><td>'+statusName(f)+'<br><small>المالك: '+(f.owner_approved?"موافق":"بانتظار الموافقة")+' · الإدارة: '+(f.management_approved?"معتمدة":"بانتظار الاعتماد")+'</small></td><td>'+flightActions(f)+'</td></tr>').join("")||'<tr><td colspan="5">ما فيه رحلات حالياً.</td></tr>';
+  $("adminFlights").innerHTML=relevant.map(f=>'<tr><td>'+esc(f.flight_number)+'</td><td>'+esc(f.origin_code)+' → '+esc(f.destination_code)+'</td><td>'+dateLabel(f.departure_at)+'</td><td>'+statusName(f)+'<br><small>المالك: '+(f.owner_approved?"موافق":"بانتظار الموافقة")+' · الإدارة: '+(f.management_approved?"معتمدة":"بانتظار الاعتماد")+'</small>'+statusEditor(f)+'</td><td>'+flightActions(f)+'</td></tr>').join("")||'<tr><td colspan="5">ما فيه رحلات حالياً.</td></tr>';
   $("adminBookings").innerHTML=(bs||[]).map(b=>'<tr><td>'+esc(b.passenger_name)+'</td><td>'+esc(b.roblox_username)+'</td><td>'+esc(b.flights?.flight_number||"—")+'</td><td>'+esc(b.status)+'</td><td>'+(canChangeBookings&&b.status!=="rejected"?'<button class="btn small" data-booking="'+b.id+'" data-status="rejected">رفض الحجز</button>':(b.status==="rejected"?"—":"عرض فقط"))+'</td></tr>').join("");
   $("adminEmployees").innerHTML=(es||[]).map(x=>'<tr><td>'+esc(x.roblox_username)+'</td><td>'+esc(x.employee_id)+'</td><td>'+esc(roleInfo[x.role]?.name||x.role)+'</td><td>'+(x.active?"نشط":"موقوف")+'</td></tr>').join("");
   $("staffFlights").innerHTML=allFlights.filter(f=>f.owner_approved&&f.management_approved&&["scheduled","boarding","delayed"].includes(f.status)).map(f=>'<tr><td>'+esc(f.flight_number)+'</td><td>'+esc(f.origin_code)+' → '+esc(f.destination_code)+'</td><td>'+dateLabel(f.departure_at)+'</td><td>'+esc(f.aircraft||"—")+'<br><small>'+roster(f)+'</small></td><td>'+statusName(f)+'<br>'+flightActions(f)+'</td></tr>').join("")||'<tr><td colspan="5">ما فيه رحلات معتمدة حالياً.</td></tr>';
@@ -103,6 +105,7 @@ async function initDashboard(){
   if(action==="reject")result=await sb.from("flights").update({status:"cancelled"}).eq("id",id);
   if(action==="start")result=await sb.from("flights").update({status:"in_progress"}).eq("id",id);
   if(action==="stop")result=await sb.from("flights").update({status:"stopped"}).eq("id",id);
+  if(action==="set-status"){const select=document.querySelector('[data-flight-status="'+id+'"]');if(!select)return;result=await sb.from("flights").update({status:select.value}).eq("id",id);}
   if(action==="join")result=await sb.from("flight_staff_members").insert({flight_id:id,employee_user_id:uid,role,roblox_username:emp.roblox_username});
   if(action==="leave")result=await sb.from("flight_staff_members").delete().eq("flight_id",id).eq("employee_user_id",uid);
   if(result?.error){alert("تعذر تنفيذ الإجراء: "+result.error.message);return}await refresh();

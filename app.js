@@ -26,7 +26,28 @@ async function initPassengerAccount(){
  }).join(""):"ما عندك حجوزات حالياً.";
  $("logout")?.addEventListener("click",async()=>{await sb.auth.signOut();location.href="index.html"});
 }
-async function initBooking(){const {data:s}=await sb.auth.getSession();if(!s.session){$("bookingGuard").classList.remove("hidden");$("bookingForm").classList.add("hidden");return}const {data:a}=await sb.from("passenger_accounts").select("user_id,roblox_username").eq("user_id",s.session.user.id).maybeSingle();if(!a){await sb.auth.signOut();$("bookingGuard").classList.remove("hidden");return}$("robloxName").value=a.roblox_username;try{const fs=await getFlights();const {data:classAssignments}=await sb.from("flight_passenger_classes").select("flight_id,passenger_class").eq("passenger_user_id",s.session.user.id);const classSel=$("passengerClass");const drawClasses=()=>{const f=fs.find(x=>x.id===$("flightId").value);if(!f)return;const assigned=classAssignments?.find(x=>x.flight_id===f.id)?.passenger_class;const opts=[["economy","اقتصادي",f.seats_economy],["business","بزنس",f.seats_business],["first","فرست كلاس",f.seats_first]].filter(([v])=>assigned?v===assigned:v==="economy");classSel.innerHTML=opts.map(([v,n,count])=>'<option value="'+v+'" '+(!count?'disabled':'')+' >'+n+' · '+count+' مقعد'+(assigned?" · مخصص لك":"")+"</option>").join("");};$("flightId").innerHTML='<option value="">اختر الرحلة</option>'+fs.filter(f=>["scheduled","boarding"].includes(f.status)).map(f=>'<option value="'+esc(f.id)+'">'+esc(f.flight_number)+' · '+esc(f.origin_code)+' → '+esc(f.destination_code)+' · '+dateLabel(f.departure_at)+'</option>').join("");$("flightId").addEventListener("change",drawClasses);const id=new URLSearchParams(location.search).get("flight");if(id)$("flightId").value=id;drawClasses();}catch{}$("bookingForm").addEventListener("submit",async e=>{e.preventDefault();const {error}=await sb.from("bookings").insert({flight_id:$("flightId").value,roblox_username:a.roblox_username,passenger_name:$("passengerName").value.trim(),passenger_user_id:a.user_id,passenger_class:$("passengerClass").value,notes:$("notes").value.trim()||null,status:"approved"});if(error)return msg("formMessage","تعذر تأكيد الحجز. تحقق من المقاعد أو أنك حجزت مسبقاً.",true);msg("formMessage","تم تأكيد حجزك بنجاح.")})}
+async function initBooking(){
+ const {data:s}=await sb.auth.getSession();
+ if(!s.session){$("bookingGuard").classList.remove("hidden");$("bookingForm").classList.add("hidden");return}
+ const {data:a}=await sb.from("passenger_accounts").select("user_id,roblox_username").eq("user_id",s.session.user.id).maybeSingle();
+ if(!a){await sb.auth.signOut();$("bookingGuard").classList.remove("hidden");return}
+ $("robloxName").value=a.roblox_username;
+ const classNote=$("passengerClass");
+ if(classNote){classNote.innerHTML='<option value="economy" selected>اقتصادي — مجاني</option>';classNote.disabled=true;}
+ try{
+  const fs=await getFlights();
+  $("flightId").innerHTML='<option value="">اختر الرحلة</option>'+fs.filter(f=>["scheduled","boarding"].includes(f.status)).map(f=>'<option value="'+esc(f.id)+'">'+esc(f.flight_number)+' · '+esc(f.origin_code)+' → '+esc(f.destination_code)+' · '+dateLabel(f.departure_at)+'</option>').join("");
+  const id=new URLSearchParams(location.search).get("flight");if(id)$("flightId").value=id;
+ }catch(err){console.error("Load booking flights:",err);msg("formMessage","تعذر تحميل الرحلات. حدّث الصفحة وحاول مرة ثانية.",true);}
+ $("bookingForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const flightId=$("flightId").value;if(!flightId)return msg("formMessage","اختر الرحلة أولاً.",true);
+  const {error}=await sb.from("bookings").insert({flight_id:flightId,roblox_username:a.roblox_username,passenger_name:$("passengerName").value.trim(),passenger_user_id:a.user_id,notes:$("notes").value.trim()||null,status:"approved"});
+  if(error){console.error("Booking insert:",error);return msg("formMessage",error.message.includes("انتهت مقاعد")?"انتهت مقاعد الاقتصادي في هذه الرحلة.":error.message.includes("full")?"اكتملت مقاعد الرحلة.":"تعذر تأكيد الحجز: "+error.message,true);}
+  msg("formMessage","تم تأكيد حجزك الاقتصادي المجاني بنجاح.");
+  $("bookingForm").querySelector('button[type="submit"]').disabled=true;
+ });
+}
 async function initEmployeeLogin(){
 const idInput=$("employeeId"),remember=$("rememberEmployee");
 try{const saved=localStorage.getItem("karen_employee_id");if(saved&&idInput){idInput.value=saved;if(remember)remember.checked=true}}catch{}

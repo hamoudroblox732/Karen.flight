@@ -15,10 +15,13 @@ async function initPassengerAccount(){
  const {data:a}=await sb.from("passenger_accounts").select("user_id,roblox_username").eq("user_id",s.session.user.id).maybeSingle();
  if(!a){await sb.auth.signOut();return location.replace("passenger-login.html")}
  $("welcome").textContent="أهلاً "+a.roblox_username;
- const {data:rows,error}=await sb.from("bookings").select("id,flight_id,status,passenger_class,created_at,flight_number_snapshot,origin_code_snapshot,destination_code_snapshot,departure_at_snapshot,aircraft_snapshot,flight_status_snapshot,server_url_snapshot,flights(flight_number,origin_code,destination_code,departure_at,aircraft,status,server_url,economy_link_approved,premium_link_approved)").eq("passenger_user_id",a.user_id).order("created_at",{ascending:false});
+ const {data:rows,error}=await sb.from("bookings").select("id,flight_id,status,passenger_class,created_at,flight_number_snapshot,origin_code_snapshot,destination_code_snapshot,departure_at_snapshot,aircraft_snapshot,flight_status_snapshot,server_url_snapshot,passenger_visible_until,flights(flight_number,origin_code,destination_code,departure_at,aircraft,status,server_url,economy_link_approved,premium_link_approved)").eq("passenger_user_id",a.user_id).order("created_at",{ascending:false});
+ const visibleRows=(rows||[]).filter(b=>!b.passenger_visible_until||new Date(b.passenger_visible_until).getTime()>Date.now());
+ const nextExpiry=visibleRows.map(b=>b.passenger_visible_until?new Date(b.passenger_visible_until).getTime():Infinity).filter(t=>Number.isFinite(t)).sort((x,y)=>x-y)[0];
+ if(Number.isFinite(nextExpiry))setTimeout(()=>location.reload(),Math.max(1000,nextExpiry-Date.now()+500));
  const cls={economy:"اقتصادي",business:"بزنس",first:"فرست كلاس"};
  const state={scheduled:"مجدولة",boarding:"صعود الركاب",delayed:"متأخرة",in_progress:"بدأت",stopped:"متوقفة",closed:"مغلقة",cancelled:"ملغاة",deleted:"محذوفة"};
- $("bookingHistory").innerHTML=error?"تعذر تحميل الحجوزات.":rows.length?rows.map(b=>{
+ $("bookingHistory").innerHTML=error?"تعذر تحميل الحجوزات.":visibleRows.length?visibleRows.map(b=>{
   const f=b.flights||{},deleted=!b.flight_id&&!f.flight_number;
   const no=f.flight_number||b.flight_number_snapshot||"—",from=f.origin_code||b.origin_code_snapshot||"—",to=f.destination_code||b.destination_code_snapshot||"—",when=f.departure_at||b.departure_at_snapshot||b.created_at,status=deleted?"deleted":(f.status||b.flight_status_snapshot||"scheduled"),url=f.server_url||b.server_url_snapshot;
   const premium=["business","first"].includes(b.passenger_class||"economy");const economyReleased=!!f.economy_link_approved;const premiumReleased=!!f.premium_link_approved;const canEnter=!!url&&!deleted&&["boarding","in_progress"].includes(status)&&b.status==="approved"&&(premium?premiumReleased:economyReleased);

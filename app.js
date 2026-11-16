@@ -1,4 +1,10 @@
-const CFG=window.KAREN_FLIGHT_CONFIG||{}, sb=window.supabase?.createClient(CFG.supabaseUrl,CFG.supabaseKey);
+const CFG=window.KAREN_FLIGHT_CONFIG||{};
+const authStorage={
+ getItem:key{ return (localStorage.getItem("karen_passenger_remember_device")==="0"?sessionStorage:localStorage).getItem(key) },
+ setItem(key,value){ return (localStorage.getItem("karen_passenger_remember_device")==="0"?sessionStorage:localStorage).setItem(key,value) },
+ removeItem(key){ localStorage.removeItem(key);sessionStorage.removeItem(key) }
+};
+const sb=window.supabase?.createClient(CFG.supabaseUrl,CFG.supabaseKey,{auth:{storage:authStorage,persistSession:true,autoRefreshToken:true}});
 const $=id=>document.getElementById(id), esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const msg=(id,t,bad=false)=>{const e=$(id);if(e){e.textContent=t;e.className="message show"+(bad?" error":"")}};
 const empAlias=id=>{const normalized=String(id||"").trim().toUpperCase().replace(/[^A-Z0-9]/g,"");if(normalized==="FO1176551")return "employee.fo117651@karenflight.invalid";return "employee."+normalized.toLowerCase()+"@karenflight.invalid"};
@@ -9,7 +15,16 @@ async function getFlights(){const {data,error}=await sb.from("flights").select("
 function card(f){return '<article class="flight-card"><div class="flight-top"><b class="flight-no en">'+esc(f.flight_number)+'</b><span class="status">'+(f.status==="boarding"?"الصعود متاح":f.status==="in_progress"?"الرحلة جارية":f.status==="delayed"?"متأخرة":"مجدولة")+'</span></div><div class="route"><div class="airport"><b>'+esc(f.origin_code)+'</b></div><div class="route-line">✈</div><div class="airport"><b>'+esc(f.destination_code)+'</b></div></div><div class="flight-bottom"><span class="flight-meta">'+dateLabel(f.departure_at)+'<br>'+esc(f.aircraft||"Karen")+'</span><a class="btn primary small" href="booking.html?flight='+encodeURIComponent(f.id)+'">احجز</a></div></article>'}
 async function initFlights(){const box=$("flightList");try{const fs=await getFlights(),from=$("fromFilter"),to=$("toFilter");if(from)from.innerHTML='<option value="">كل المطارات</option>'+[...new Set(fs.map(x=>x.origin_code))].sort().map(x=>'<option>'+esc(x)+'</option>').join("");if(to)to.innerHTML='<option value="">كل الوجهات</option>'+[...new Set(fs.map(x=>x.destination_code))].sort().map(x=>'<option>'+esc(x)+'</option>').join("");const draw=()=>{const rows=fs.filter(x=>(!from?.value||x.origin_code===from.value)&&(!to?.value||x.destination_code===to.value)&&(!$("dateFilter")?.value||x.departure_at.slice(0,10)===$("dateFilter").value));box.innerHTML=rows.length?rows.map(card).join(""):'<div class="empty">ما فيه رحلات متاحة حالياً.</div>'};from?.addEventListener("change",draw);to?.addEventListener("change",draw);$("dateFilter")?.addEventListener("change",draw);draw()}catch{box.innerHTML='<div class="empty">تعذر تحميل الرحلات.</div>'}}
 async function initRegister(){$("registerForm")?.addEventListener("submit",async e=>{e.preventDefault();const u=$("username").value.trim(),p=$("password").value;if(!/^[A-Za-z0-9_]{3,20}$/.test(u))return msg("formMessage","اسم Roblox غير صحيح.",true);const r=await fetch(CFG.supabaseUrl+"/functions/v1/passenger-register",{method:"POST",headers:{"Content-Type":"application/json","apikey":CFG.supabaseKey},body:JSON.stringify({username:u,password:p})}),o=await r.json().catch(()=>({}));if(!r.ok)return msg("formMessage",o.error||"تعذر إنشاء الحساب.",true);const {error}=await sb.auth.signInWithPassword({email:paxAlias(u),password:p});if(error)return msg("formMessage","تم إنشاء الحساب. سجل الدخول من صفحة الدخول.",true);location.href="passenger-account.html"})}
-async function initPassengerLogin(){$("loginForm")?.addEventListener("submit",async e=>{e.preventDefault();const {error}=await sb.auth.signInWithPassword({email:paxAlias($("username").value),password:$("password").value});if(error)return msg("formMessage","اسم المستخدم أو كلمة المرور غير صحيحة.",true);location.href="passenger-account.html"})}
+async function initPassengerLogin(){
+ const remember=$("rememberPassengerDevice");
+ $("loginForm")?.addEventListener("submit",async e=>{
+  e.preventDefault();
+  try{localStorage.setItem("karen_passenger_remember_device",remember?.checked?"1":"0")}catch{}
+  const {error}=await sb.auth.signInWithPassword({email:paxAlias($("username").value),password:$("password").value});
+  if(error)return msg("formMessage","اسم المستخدم أو كلمة المرور غير صحيحة.",true);
+  location.href="passenger-account.html";
+ });
+}
 async function initPassengerAccount(){
  const {data:s}=await sb.auth.getSession();if(!s.session)return location.replace("passenger-login.html");
  const {data:a}=await sb.from("passenger_accounts").select("user_id,roblox_username").eq("user_id",s.session.user.id).maybeSingle();
@@ -52,6 +67,7 @@ async function initBooking(){
  });
 }
 async function initEmployeeLogin(){
+try{localStorage.setItem("karen_passenger_remember_device","1")}catch{}
 const idInput=$("employeeId"),remember=$("rememberEmployee");
 try{const saved=localStorage.getItem("karen_employee_id");if(saved&&idInput){idInput.value=saved;if(remember)remember.checked=true}}catch{}
 if(remember)remember.addEventListener("change",()=>{try{if(remember.checked&&idInput.value.trim())localStorage.setItem("karen_employee_id",idInput.value.trim().toUpperCase());else localStorage.removeItem("karen_employee_id")}catch{}});
@@ -84,6 +100,45 @@ async function initDashboard(){
  const canSeeBookings=["owner","management","admin","ground_staff","cabin_crew"].includes(role);
  const canChangeBookings=["owner","management","admin"].includes(role);
  const canSeeFlights=true;
+ const canViewAudit=owner||management;
+ const viewTitles={overview:"الرئيسية",flightsView:"إدارة الرحلات",bookingsView:"الحجوزات",employeesView:"الموظفون",auditView:"سجل العمليات",settingsView:"الإعدادات"};
+ const showView=id=>{
+  document.querySelectorAll(".dash-view").forEach(v=>v.classList.toggle("active",v.id===id));
+  document.querySelectorAll(".dash-nav").forEach(v=>v.classList.toggle("active",v.dataset.view===id));
+  $("viewTitle").textContent=viewTitles[id]||"لوحة الإدارة";
+  if(id==="auditView")loadAudit();
+ };
+ document.querySelectorAll(".dash-nav").forEach(b=>b.addEventListener("click",()=>showView(b.dataset.view)));
+ document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>showView(b.dataset.go)));
+ $("navBookings")?.classList.toggle("hidden",!canSeeBookings);
+ $("navEmployees")?.classList.toggle("hidden",!owner);
+ $("navAudit")?.classList.toggle("hidden",!canViewAudit);
+ $("shortcutAudit")?.classList.toggle("hidden",!canViewAudit);
+ $("navBookings")?.addEventListener("click",()=>{if(!canSeeBookings)showView("overview")});
+ $("settingsLogout")?.addEventListener("click",async()=>{await sb.auth.signOut();location.href="index.html"});
+ const auditLabels={flights:"رحلة",bookings:"حجز",employees:"موظف",insert:"إنشاء",update:"تعديل",delete:"حذف"};
+ let auditRows=[];
+ const auditSummary=row=>{
+  const before=row.details?.before||{},after=row.details?.after||{};
+  const keys=["flight_number","origin_code","destination_code","status","passenger_name","roblox_username","employee_id","role","active","passenger_class","server_url"];
+  const changes=keys.filter(k=>JSON.stringify(before[k])!==JSON.stringify(after[k])&&(before[k]!==undefined||after[k]!==undefined)).slice(0,4);
+  if(!changes.length)return row.entity_id||"—";
+  return changes.map(k=>k+": "+(before[k]===undefined?"—":String(before[k]))+" ← "+(after[k]===undefined?"—":String(after[k]))).join(" · ");
+ };
+ async function loadAudit(){
+  if(!canViewAudit)return;
+  $("auditRows").innerHTML='<tr><td colspan="6">جاري تحميل السجل...</td></tr>';
+  const {data,error}=await sb.from("audit_logs").select("id,created_at,actor_name,actor_role,action,entity_type,entity_id,details").order("created_at",{ascending:false}).limit(200);
+  if(error){$("auditRows").innerHTML='<tr><td colspan="6">تعذر تحميل سجل العمليات: '+esc(error.message)+'</td></tr>';return}
+  auditRows=data||[];drawAudit();
+ }
+ function drawAudit(){
+  const q=($("auditSearch")?.value||"").trim().toLowerCase(),type=$("auditType")?.value||"",action=$("auditAction")?.value||"";
+  const rows=auditRows.filter(r=>(!type||r.entity_type===type)&&(!action||r.action===action)&&(!q||[r.actor_name,r.actor_role,r.entity_type,r.entity_id,r.action,JSON.stringify(r.details)].join(" ").toLowerCase().includes(q)));
+  $("auditRows").innerHTML=rows.length?rows.map(r=>'<tr><td>'+dateLabel(r.created_at)+'</td><td>'+esc(r.actor_name||"System")+'</td><td>'+esc(roleInfo[r.actor_role]?.name||r.actor_role||"—")+'</td><td>'+esc(auditLabels[r.action]||r.action)+'</td><td>'+esc(auditLabels[r.entity_type]||r.entity_type)+' · '+esc(r.entity_id||"—")+'</td><td class="audit-details">'+esc(auditSummary(r))+'</td></tr>').join(""):'<tr><td colspan="6">ما فيه عمليات مطابقة.</td></tr>';
+ }
+ $("auditSearch")?.addEventListener("input",drawAudit);$("auditType")?.addEventListener("change",drawAudit);$("auditAction")?.addEventListener("change",drawAudit);
+ $("auditRefresh")?.addEventListener("click",loadAudit);
  $("flightAdminPanel").classList.toggle("hidden",!(pilot||owner||management));
  $("employeePanel").classList.toggle("hidden",!owner);
  $("bookingsPanel")?.classList.toggle("hidden",!canSeeBookings);

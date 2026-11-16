@@ -1,6 +1,6 @@
 const CFG=window.KAREN_FLIGHT_CONFIG||{};
 const authStorage={
- getItem:key{ return (localStorage.getItem("karen_passenger_remember_device")==="0"?sessionStorage:localStorage).getItem(key) },
+ getItem(key){ return (localStorage.getItem("karen_passenger_remember_device")==="0"?sessionStorage:localStorage).getItem(key) },
  setItem(key,value){ return (localStorage.getItem("karen_passenger_remember_device")==="0"?sessionStorage:localStorage).setItem(key,value) },
  removeItem(key){ localStorage.removeItem(key);sessionStorage.removeItem(key) }
 };

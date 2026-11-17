@@ -175,6 +175,9 @@ async function initDashboard(){
   const crewRows=members||[];
   const roster=f=>crewRows.filter(x=>x.flight_id===f.id).map(x=>esc(x.roblox_username||x.role)).join("، ")||"لم ينضم طاقم بعد";
   const statusName=f=>({scheduled:"مجدولة",boarding:"صعود الركاب",delayed:"متأخرة",in_progress:"بدأت",stopped:"متوقفة",closed:"مغلقة",cancelled:"ملغاة"}[f.status]||f.status);
+   const metricEditor=f=>{
+    if(!(owner||management)||f.status!=="in_progress")return "";
+    return '<div class="tower-metrics-edit"><input type="number" min="0" max="1000" step="1" placeholder="السرعة kt" aria-label="السرعة بالعقدة" data-admin-speed-id="'+f.id+'" value="'+(f.current_speed_knots??"")+'"><input type="number" min="0" max="60000" step="1" placeholder="الارتفاع ft" aria-label="الارتفاع بالقدم" data-admin-altitude-id="'+f.id+'" value="'+(f.current_altitude_ft??"")+'"><button class="btn small" data-flight-action="save-metrics" data-id="'+f.id+'">حفظ السرعة والارتفاع</button></div>';
   const statusEditor=f=>{
    if(!(owner||(management&&f.owner_approved)))return "";
    const options=[["scheduled","مجدولة"],["boarding","صعود الركاب"],["delayed","متأخرة"],["in_progress","بدأت"],["stopped","متوقفة"],["closed","مغلقة"],["cancelled","ملغاة"]];
@@ -200,7 +203,7 @@ async function initDashboard(){
    return actions.join(" ")||"—";
   };
   const relevant=pilot?allFlights.filter(f=>f.pilot_user_id===uid):allFlights;
-  $("adminFlights").innerHTML=relevant.map(f=>'<tr><td>'+esc(f.flight_number)+'</td><td>'+esc(f.origin_code)+' → '+esc(f.destination_code)+'</td><td>'+dateLabel(f.departure_at)+'</td><td>'+statusName(f)+'<br><small>المالك: '+(f.owner_approved?"موافق":"بانتظار الموافقة")+' · الإدارة: '+(f.management_approved?"معتمدة":"بانتظار الاعتماد")+'</small>'+((owner||management)?'<br><small>السرعة: '+(f.current_speed_knots==null?"—":esc(f.current_speed_knots)+" kt")+' · الارتفاع: '+(f.current_altitude_ft==null?"—":esc(f.current_altitude_ft)+" ft")+'</small>':"")+statusEditor(f)+'</td><td>'+flightActions(f)+'</td></tr>').join("")||'<tr><td colspan="5">ما فيه رحلات حالياً.</td></tr>';
+  $("adminFlights").innerHTML=relevant.map(f=>'<tr><td>'+esc(f.flight_number)+'</td><td>'+esc(f.origin_code)+' → '+esc(f.destination_code)+'</td><td>'+dateLabel(f.departure_at)+'</td><td>'+statusName(f)+'<br><small>المالك: '+(f.owner_approved?"موافق":"بانتظار الموافقة")+' · الإدارة: '+(f.management_approved?"معتمدة":"بانتظار الاعتماد")+'</small>'+((owner||management)?'<br><small>السرعة: '+(f.current_speed_knots==null?"—":esc(f.current_speed_knots)+" kt")+' · الارتفاع: '+(f.current_altitude_ft==null?"—":esc(f.current_altitude_ft)+" ft")+'</small>':"")+metricEditor(f)+statusEditor(f)+'</td><td>'+flightActions(f)+'</td></tr>').join("")||'<tr><td colspan="5">ما فيه رحلات حالياً.</td></tr>';
   $("adminBookings").innerHTML=(bs||[]).map(b=>'<tr><td>'+esc(b.passenger_name)+'</td><td>'+esc(b.roblox_username)+'</td><td>'+esc(b.flights?.flight_number||"—")+'</td><td>'+esc(b.status)+'</td><td>'+(canChangeBookings&&b.status!=="rejected"?'<button class="btn small" data-booking="'+b.id+'" data-status="rejected">رفض الحجز</button>':(b.status==="rejected"?"—":"عرض فقط"))+'</td></tr>').join("");
   $("adminEmployees").innerHTML=(es||[]).map(x=>'<tr><td>'+esc(x.roblox_username)+'</td><td>'+esc(x.employee_id)+'</td><td>'+esc(roleInfo[x.role]?.name||x.role)+'</td><td>'+(x.active?"نشط":"موقوف")+'</td><td>'+(x.role!=="owner"&&x.user_id!==uid?'<button class="btn small" data-delete-employee="'+esc(x.user_id)+'" data-employee-name="'+esc(x.roblox_username)+'">حذف الهوية</button>':"—")+'</td></tr>').join("");
   $("staffFlights").innerHTML=allFlights.filter(f=>f.owner_approved&&f.management_approved&&["scheduled","boarding","delayed","in_progress"].includes(f.status)).map(f=>'<tr><td>'+esc(f.flight_number)+'</td><td>'+esc(f.origin_code)+' → '+esc(f.destination_code)+'</td><td>'+dateLabel(f.departure_at)+'</td><td>'+esc(f.aircraft||"—")+'<br><small>'+roster(f)+'</small></td><td>'+statusName(f)+(f.crew_link_approved&&f.server_url?'<br><a target="_blank" rel="noopener" href="'+esc(f.server_url)+'">دخول سيرفر الموظفين</a>':"")+'<br>'+flightActions(f)+'</td></tr>').join("")||'<tr><td colspan="5">ما فيه رحلات معتمدة حالياً.</td></tr>';
@@ -211,7 +214,7 @@ async function initDashboard(){
    const joinable=["scheduled","boarding","delayed","in_progress"].includes(f.status);
    let action="—";
    if(atc&&mine){
-    action=(f.crew_link_approved&&f.server_url?'<a class="btn small primary" target="_blank" rel="noopener" href="'+esc(f.server_url)+'">دخول سيرفر الرحلة</a>':'<small>رابط الموظفين لم يُتح بعد</small>')+' <button class="btn small" data-tower-action="leave" data-id="'+f.id+'">انسحاب</button>'+(f.status==="in_progress"?'<div class="tower-metrics-edit"><input type="number" min="0" max="1000" step="1" placeholder="السرعة kt" aria-label="السرعة بالعقدة" data-speed-id="'+f.id+'" value="'+(f.current_speed_knots??"")+'"><input type="number" min="0" max="60000" step="1" placeholder="الارتفاع ft" aria-label="الارتفاع بالقدم" data-altitude-id="'+f.id+'" value="'+(f.current_altitude_ft??"")+'"><button class="btn small" data-tower-action="save" data-id="'+f.id+'">حفظ البيانات</button></div>':"");
+     action=(f.crew_link_approved&&f.server_url?'<a class="btn small primary" target="_blank" rel="noopener" href="'+esc(f.server_url)+'">دخول سيرفر الرحلة</a>':'<small>رابط الموظفين لم يُتح بعد</small>')+' <button class="btn small" data-tower-action="leave" data-id="'+f.id+'">انسحاب</button>';
    }else if(atc&&!controller&&joinable){
     action='<button class="btn small primary" data-tower-action="join" data-id="'+f.id+'">حجز مقعد البرج</button>';
    }else if(atc&&controller){
@@ -228,6 +231,18 @@ async function initDashboard(){
  $("adminFlights")?.addEventListener("click",async e=>{
   const b=e.target.closest("[data-flight-action]");if(!b)return;
   const id=b.dataset.id,action=b.dataset.flightAction;let result;
+   if(action==="save-metrics"){
+    if(!owner&&!management)return alert("تعديل السرعة والارتفاع متاح للمالك والإدارة فقط.");
+    const speedRaw=document.querySelector('[data-admin-speed-id="'+id+'"]')?.value??"";
+    const altitudeRaw=document.querySelector('[data-admin-altitude-id="'+id+'"]')?.value??"";
+    if(speedRaw.trim()===""||altitudeRaw.trim()==="")return alert("أدخل السرعة والارتفاع أولاً.");
+    const speed=Number(speedRaw),altitude=Number(altitudeRaw);
+    if(!Number.isInteger(speed)||speed<0||speed>1000||!Number.isInteger(altitude)||altitude<0||altitude>60000)return alert("السرعة من 0 إلى 1000 عقدة والارتفاع من 0 إلى 60000 قدم.");
+    const {data,error}=await sb.from("flights").update({current_speed_knots:speed,current_altitude_ft:altitude,flight_metrics_updated_at:new Date().toISOString()}).eq("id",id).eq("owner_approved",true).eq("management_approved",true).eq("status","in_progress").select("id").maybeSingle();
+    if(error)return alert("تعذر حفظ البيانات: "+error.message);
+    if(!data)return alert("لم يتم الحفظ. تأكد أن الرحلة معتمدة وحالتها بدأت.");
+    await refresh();return;
+   }
   if(action==="owner-approve")result=await sb.from("flights").update({owner_approved:true,owner_approved_by:uid,owner_approved_at:new Date().toISOString()}).eq("id",id);
   if(action==="management-approve")result=await sb.from("flights").update({management_approved:true,management_approved_by:uid,management_approved_at:new Date().toISOString()}).eq("id",id).eq("owner_approved",true);
   if(action==="crew-release"){if(!owner&&!management)return alert("غير مصرح");result=await sb.from("flights").update({crew_link_approved:true,crew_link_approved_at:new Date().toISOString()}).eq("id",id);}

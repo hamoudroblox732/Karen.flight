@@ -212,3 +212,10 @@ a{transition:color .2s}
 @media(max-width:420px){.dash-grid{grid-template-columns:1fr}.dash-top-actions .btn{padding:6px 9px;font-size:10px}}
 
 .remember-device{display:flex;align-items:center;gap:9px;color:#d8e0e8;font-size:12px;font-weight:600}.remember-device input{accent-color:#c9a86b;width:16px;height:16px}
+
+/* ATC tower */
+.tower-metrics-edit{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px;min-width:260px}
+.tower-metrics-edit input{width:105px;min-width:0;padding:7px 8px;border:1px solid #c9a86b55;border-radius:8px;background:#091522;color:#f4f0e8;font:inherit;font-size:11px}
+#towerFlights td{vertical-align:middle}
+#towerFlights small{color:#aab6c3;font-size:10px}
+@media(max-width:760px){.tower-metrics-edit{min-width:220px}.tower-metrics-edit input{width:88px}}

@@ -91,10 +91,10 @@ async function initDashboard(){
   co_pilot:{name:"Co-Pilot · مساعد الطيار",about:"ينضم إلى رحلة الطيار المحددة ويسانده في متابعة تفاصيلها.",tasks:["الانضمام إلى رحلة معتمدة يشغلها طيار","عرض بيانات الرحلة والطاقم","الانسحاب من الرحلة"],access:"الانضمام إلى رحلة واحدة كمساعد طيار والانسحاب منها."},
   cabin_crew:{name:"Cabin Crew · طاقم الضيافة",about:"ينضم إلى الرحلات لمتابعة معلومات الرحلة وقائمة المسافرين.",tasks:["الانضمام إلى الرحلات المعتمدة","عرض بيانات الرحلة والمسار والموعد","متابعة قائمة المسافرين والحجوزات"],access:"عرض معلومات الرحلة والحجوزات والانسحاب من الرحلة."},
   ground_staff:{name:"Ground Crew · الطاقم الأرضي",about:"يتابع تجهيز الرحلات وإجراءات المسافرين قبل الصعود.",tasks:["الانضمام إلى الرحلات المعتمدة","عرض بيانات الرحلة والطاقم","متابعة قائمة المسافرين والحجوزات"],access:"عرض معلومات الرحلة والحجوزات والانسحاب من الرحلة."},
-  atc:{name:"ATC · مراقب البرج",about:"ينضم إلى الرحلة كمراقب برج ويتابع الطائرة والوجهة ويحدّث بيانات السرعة والارتفاع.",tasks:["الانضمام إلى رحلة معتمدة بمقعد برج واحد","دخول سيرفر الرحلة من الرابط المعتاد","متابعة الطائرة والوجهة وتحديث السرعة والارتفاع"],access:"مراقبة رحلة واحدة وتحديث بياناتها أثناء التشغيل."},
-  management:{name:"Management · الإدارة",about:"تراجع طلبات الرحلات بعد موافقة المالك وتدير اعتماد التشغيل.",tasks:["مراجعة الرحلات التي اعتمدها المالك","اعتماد الرحلة للتشغيل أو رفضها","متابعة الرحلات والحجوزات وإدارة حالاتها"],access:"اعتماد تشغيل الرحلات وإدارة الرحلات والحجوزات."},
-  admin:{name:"Management · الإدارة",about:"تراجع طلبات الرحلات بعد موافقة المالك وتدير اعتماد التشغيل.",tasks:["مراجعة الرحلات التي اعتمدها المالك","اعتماد الرحلة للتشغيل أو رفضها","متابعة الرحلات والحجوزات وإدارة حالاتها"],access:"اعتماد تشغيل الرحلات وإدارة الرحلات والحجوزات."},
-  owner:{name:"Owner · المالك",about:"يراجع طلبات الطيارين ويمنح الموافقة الأولى قبل انتقالها للإدارة.",tasks:["مراجعة طلبات الرحلات والموافقة أو الرفض","الإشراف على الرحلات والحجوزات","إنشاء حسابات الموظفين وتحديد وظائفهم"],access:"الموافقة الأولى على الرحلات وإدارة الموظفين والرحلات والحجوزات."}
+  atc:{name:"ATC · مراقب البرج",about:"ينضم إلى الرحلة كمراقب برج ويتابع الطائرة والوجهة ويشاهد بيانات السرعة والارتفاع.",tasks:["الانضمام إلى رحلة معتمدة بمقعد برج واحد","دخول سيرفر الرحلة من الرابط المعتاد","متابعة نوع الطائرة والوجهة والسرعة والارتفاع"],access:"مراقبة الرحلة وعرض بياناتها دون تعديل السرعة أو الارتفاع."},
+  management:{name:"Management · الإدارة",about:"تراجع طلبات الرحلات بعد موافقة المالك وتدير اعتماد التشغيل.",tasks:["مراجعة الرحلات التي اعتمدها المالك","اعتماد الرحلة للتشغيل أو رفضها","تحديد السرعة والارتفاع يدويًا أثناء الرحلة","متابعة الرحلات والحجوزات وإدارة حالاتها"],access:"اعتماد تشغيل الرحلات وإدارة الرحلات والحجوزات وتحديد بيانات الرحلة."},
+  admin:{name:"Management · الإدارة",about:"تراجع طلبات الرحلات بعد موافقة المالك وتدير اعتماد التشغيل.",tasks:["مراجعة الرحلات التي اعتمدها المالك","اعتماد الرحلة للتشغيل أو رفضها","تحديد السرعة والارتفاع يدويًا أثناء الرحلة","متابعة الرحلات والحجوزات وإدارة حالاتها"],access:"اعتماد تشغيل الرحلات وإدارة الرحلات والحجوزات وتحديد بيانات الرحلة."},
+  owner:{name:"Owner · المالك",about:"يراجع طلبات الطيارين ويمنح الموافقة الأولى قبل انتقالها للإدارة.",tasks:["مراجعة طلبات الرحلات والموافقة أو الرفض","تحديد السرعة والارتفاع يدويًا أثناء الرحلة","الإشراف على الرحلات والحجوزات","إنشاء حسابات الموظفين وتحديد وظائفهم"],access:"الموافقة الأولى على الرحلات وإدارة الموظفين والرحلات والحجوزات وبيانات الرحلة."}
  };
  const info=roleInfo[role]||{name:role,about:"موظف في Karen Flight.",tasks:[],access:"حسب الوظيفة."};
  $("dashUser").textContent=emp.roblox_username+" · "+info.name;
@@ -264,14 +264,6 @@ async function initDashboard(){
   const id=b.dataset.id,action=b.dataset.towerAction;let result;
   if(action==="join")result=await sb.from("flight_staff_members").insert({flight_id:id,employee_user_id:uid,role:"atc",roblox_username:emp.roblox_username});
   if(action==="leave")result=await sb.from("flight_staff_members").delete().eq("flight_id",id).eq("employee_user_id",uid).eq("role","atc");
-  if(action==="save"){
-   const speedRaw=document.querySelector('[data-speed-id="'+id+'"]')?.value??"";
-   const altitudeRaw=document.querySelector('[data-altitude-id="'+id+'"]')?.value??"";
-   if(speedRaw.trim()===""||altitudeRaw.trim()==="")return alert("أدخل السرعة والارتفاع أولاً.");
-   const speed=Number(speedRaw),altitude=Number(altitudeRaw);
-   if(!Number.isInteger(speed)||!Number.isInteger(altitude))return alert("أدخل السرعة والارتفاع كأرقام صحيحة.");
-   result=await sb.rpc("set_flight_metrics",{p_flight_id:id,p_speed:speed,p_altitude:altitude});
-  }
   if(result?.error){alert("تعذر تنفيذ الإجراء: "+result.error.message);return}await refresh();
  });
   $("adminEmployees")?.addEventListener("click",async e=>{const b=e.target.closest("[data-delete-employee]");if(!b||!owner)return;const username=b.dataset.employeeName;if(!confirm("متأكد من حذف هوية الموظف "+username+"؟ سيتم حذف حساب دخوله وإزالته من قائمة الموظفين، ولا يمكن التراجع."))return;const r=await fetch(CFG.supabaseUrl+"/functions/v1/employee-delete",{method:"POST",headers:{"Content-Type":"application/json","apikey":CFG.supabaseKey,"Authorization":"Bearer "+s.session.access_token},body:JSON.stringify({userId:b.dataset.deleteEmployee})});const out=await r.json().catch(()=>({}));if(!r.ok)return alert(out.error||"تعذر حذف هوية الموظف.");alert("تم حذف هوية الموظف.");await refresh()});

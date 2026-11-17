@@ -224,6 +224,7 @@ async function initDashboard(){
   }).join("")||'<tr><td colspan="7">ما فيه رحلات نشطة معتمدة حالياً.</td></tr>';
  }
  $("refresh")?.addEventListener("click",refresh);
+ $("refreshTower")?.addEventListener("click",refresh);
  $("adminFlights")?.addEventListener("click",async e=>{
   const b=e.target.closest("[data-flight-action]");if(!b)return;
   const id=b.dataset.id,action=b.dataset.flightAction;let result;

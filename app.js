@@ -178,6 +178,7 @@ async function initDashboard(){
    const metricEditor=f=>{
     if(!(owner||management)||f.status!=="in_progress")return "";
     return '<div class="tower-metrics-edit"><input type="number" min="0" max="1000" step="1" placeholder="السرعة kt" aria-label="السرعة بالعقدة" data-admin-speed-id="'+f.id+'" value="'+(f.current_speed_knots??"")+'"><input type="number" min="0" max="60000" step="1" placeholder="الارتفاع ft" aria-label="الارتفاع بالقدم" data-admin-altitude-id="'+f.id+'" value="'+(f.current_altitude_ft??"")+'"><button class="btn small" data-flight-action="save-metrics" data-id="'+f.id+'">حفظ السرعة والارتفاع</button></div>';
+   };
   const statusEditor=f=>{
    if(!(owner||(management&&f.owner_approved)))return "";
    const options=[["scheduled","مجدولة"],["boarding","صعود الركاب"],["delayed","متأخرة"],["in_progress","بدأت"],["stopped","متوقفة"],["closed","مغلقة"],["cancelled","ملغاة"]];

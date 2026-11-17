@@ -265,8 +265,10 @@ async function initDashboard(){
   if(action==="join")result=await sb.from("flight_staff_members").insert({flight_id:id,employee_user_id:uid,role:"atc",roblox_username:emp.roblox_username});
   if(action==="leave")result=await sb.from("flight_staff_members").delete().eq("flight_id",id).eq("employee_user_id",uid).eq("role","atc");
   if(action==="save"){
-   const speed=Number(document.querySelector('[data-speed-id="'+id+'"]')?.value);
-   const altitude=Number(document.querySelector('[data-altitude-id="'+id+'"]')?.value);
+   const speedRaw=document.querySelector('[data-speed-id="'+id+'"]')?.value??"";
+   const altitudeRaw=document.querySelector('[data-altitude-id="'+id+'"]')?.value??"";
+   if(speedRaw.trim()===""||altitudeRaw.trim()==="")return alert("أدخل السرعة والارتفاع أولاً.");
+   const speed=Number(speedRaw),altitude=Number(altitudeRaw);
    if(!Number.isInteger(speed)||!Number.isInteger(altitude))return alert("أدخل السرعة والارتفاع كأرقام صحيحة.");
    result=await sb.rpc("set_flight_metrics",{p_flight_id:id,p_speed:speed,p_altitude:altitude});
   }

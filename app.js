@@ -163,7 +163,7 @@ async function initDashboard(){
    canSeeBookings?sb.from("bookings").select("*",{count:"exact",head:true}):Promise.resolve({count:null}),
    canSeeBookings?sb.from("bookings").select("*",{count:"exact",head:true}).eq("status","pending"):Promise.resolve({count:null}),
    sb.from("flights").select("*").order("created_at",{ascending:false}).limit(100),
-   canSeeBookings?sb.from("bookings").select("*,flights(flight_number,origin_code,destination_code)").order("created_at",{ascending:false}).limit(100):Promise.resolve({data:[]}),
+   canSeeBookings?sb.from("bookings").select("*,flights(flight_number,origin_code,destination_code,status)").order("created_at",{ascending:false}).limit(100):Promise.resolve({data:[]}),
    owner?sb.from("employees").select("user_id,roblox_username,employee_id,role,active").order("created_at",{ascending:false}).limit(100):Promise.resolve({data:[]}),
    sb.from("flight_staff_members").select("flight_id,employee_user_id,role,roblox_username"),
    (owner||management)?sb.from("passenger_accounts").select("user_id,roblox_username").order("roblox_username"):Promise.resolve({data:[]})

@@ -84,13 +84,14 @@ async function initDashboard(){
  window.currentEmployee=emp;
  const role=emp.role, uid=s.session.user.id;
  const owner=role==="owner", management=["management","admin"].includes(role), pilot=role==="pilot", atc=role==="atc";
- const crew=["co_pilot","cabin_crew","ground_staff","atc"].includes(role);
+ const crew=["co_pilot","cabin_crew","ground_staff","boarding_staff","atc"].includes(role);
  let allFlights=[], passengers=[];
  const roleInfo={
   pilot:{name:"Pilot · الطيار",about:"ينشئ طلب الرحلة ويقودها بعد اعتمادها من المالك والإدارة.",tasks:["إنشاء طلب رحلة وإرساله للمالك","بعد اعتماد المالك والإدارة يبدأ الرحلة أو يوقفها","متابعة الطاقم المرتبط برحلته"],access:"إدارة طلباته وبدء أو إيقاف رحلاته المعتمدة فقط."},
   co_pilot:{name:"Co-Pilot · مساعد الطيار",about:"ينضم إلى رحلة الطيار المحددة ويسانده في متابعة تفاصيلها.",tasks:["الانضمام إلى رحلة معتمدة يشغلها طيار","عرض بيانات الرحلة والطاقم","الانسحاب من الرحلة"],access:"الانضمام إلى رحلة واحدة كمساعد طيار والانسحاب منها."},
   cabin_crew:{name:"Cabin Crew · طاقم الضيافة",about:"ينضم إلى الرحلات لمتابعة معلومات الرحلة وقائمة المسافرين.",tasks:["الانضمام إلى الرحلات المعتمدة","عرض بيانات الرحلة والمسار والموعد","متابعة قائمة المسافرين والحجوزات"],access:"عرض معلومات الرحلة والحجوزات والانسحاب من الرحلة."},
   ground_staff:{name:"Ground Crew · الطاقم الأرضي",about:"يتابع تجهيز الرحلات وإجراءات المسافرين قبل الصعود.",tasks:["الانضمام إلى الرحلات المعتمدة","عرض بيانات الرحلة والطاقم","متابعة قائمة المسافرين والحجوزات"],access:"عرض معلومات الرحلة والحجوزات والانسحاب من الرحلة."},
+  boarding_staff:{name:"Boarding Agent · موظف البوردنق",about:"يتولى إجراءات المسافرين عند البوابة قبل صعودهم للطائرة.",tasks:["الانضمام إلى الرحلة المعتمدة كموظف بوردنق","عرض حجوزات المسافرين في الرحلات المنضم إليها فقط","تسجيل حضور المسافر عند البوابة","تأكيد صعود المسافر للطائرة عند فتح الصعود"],access:"مشاهدة حجوزات الرحلات التي انضم إليها وتحديث حالة الحضور والصعود فقط."},
   atc:{name:"ATC · مراقب البرج",about:"ينضم إلى الرحلة كمراقب برج ويتابع الطائرة والوجهة ويشاهد بيانات السرعة والارتفاع.",tasks:["الانضمام إلى رحلة معتمدة بمقعد برج واحد","دخول سيرفر الرحلة من الرابط المعتاد","متابعة نوع الطائرة والوجهة والسرعة والارتفاع"],access:"مراقبة الرحلة وعرض بياناتها دون تعديل السرعة أو الارتفاع."},
   management:{name:"Management · الإدارة",about:"تراجع طلبات الرحلات بعد موافقة المالك وتدير اعتماد التشغيل.",tasks:["مراجعة الرحلات التي اعتمدها المالك","اعتماد الرحلة للتشغيل أو رفضها","تحديد السرعة والارتفاع يدويًا أثناء الرحلة","متابعة الرحلات والحجوزات وإدارة حالاتها"],access:"اعتماد تشغيل الرحلات وإدارة الرحلات والحجوزات وتحديد بيانات الرحلة."},
   admin:{name:"Management · الإدارة",about:"تراجع طلبات الرحلات بعد موافقة المالك وتدير اعتماد التشغيل.",tasks:["مراجعة الرحلات التي اعتمدها المالك","اعتماد الرحلة للتشغيل أو رفضها","تحديد السرعة والارتفاع يدويًا أثناء الرحلة","متابعة الرحلات والحجوزات وإدارة حالاتها"],access:"اعتماد تشغيل الرحلات وإدارة الرحلات والحجوزات وتحديد بيانات الرحلة."},
@@ -98,7 +99,7 @@ async function initDashboard(){
  };
  const info=roleInfo[role]||{name:role,about:"موظف في Karen Flight.",tasks:[],access:"حسب الوظيفة."};
  $("dashUser").textContent=emp.roblox_username+" · "+info.name;
- const canSeeBookings=["owner","management","admin","ground_staff","cabin_crew"].includes(role);
+ const canSeeBookings=["owner","management","admin","ground_staff","cabin_crew","boarding_staff"].includes(role);
  const canChangeBookings=["owner","management","admin"].includes(role);
  const canSeeFlights=!atc;
  const canViewAudit=owner||management;
@@ -199,13 +200,23 @@ async function initDashboard(){
     const mine=crewRows.find(x=>x.flight_id===f.id&&x.employee_user_id===uid);
     const occupied=atc?crewRows.some(x=>x.flight_id===f.id&&x.role==="atc"):role==="co_pilot"&&crewRows.some(x=>x.flight_id===f.id&&x.role==="co_pilot");
     if(mine)actions.push('<button class="btn small" data-flight-action="leave" data-id="'+f.id+'">انسحاب</button>');
-    else if(!occupied)actions.push('<button class="btn small primary" data-flight-action="join" data-id="'+f.id+'">'+(atc?"حجز مقعد البرج":"انضمام للرحلة")+'</button>');
+    else if(!occupied)actions.push('<button class="btn small primary" data-flight-action="join" data-id="'+f.id+'">'+(atc?"حجز مقعد البرج":role==="boarding_staff"?"الانضمام إلى البوردنق":"انضمام للرحلة")+'</button>');
    }
    return actions.join(" ")||"—";
   };
   const relevant=pilot?allFlights.filter(f=>f.pilot_user_id===uid):allFlights;
   $("adminFlights").innerHTML=relevant.map(f=>'<tr><td>'+esc(f.flight_number)+'</td><td>'+esc(f.origin_code)+' → '+esc(f.destination_code)+'</td><td>'+dateLabel(f.departure_at)+'</td><td>'+statusName(f)+'<br><small>المالك: '+(f.owner_approved?"موافق":"بانتظار الموافقة")+' · الإدارة: '+(f.management_approved?"معتمدة":"بانتظار الاعتماد")+'</small>'+((owner||management)?'<br><small>السرعة: '+(f.current_speed_knots==null?"—":esc(f.current_speed_knots)+" kt")+' · الارتفاع: '+(f.current_altitude_ft==null?"—":esc(f.current_altitude_ft)+" ft")+'</small>':"")+metricEditor(f)+statusEditor(f)+'</td><td>'+flightActions(f)+'</td></tr>').join("")||'<tr><td colspan="5">ما فيه رحلات حالياً.</td></tr>';
-  $("adminBookings").innerHTML=(bs||[]).map(b=>'<tr><td>'+esc(b.passenger_name)+'</td><td>'+esc(b.roblox_username)+'</td><td>'+esc(b.flights?.flight_number||"—")+'</td><td>'+esc(b.status)+'</td><td>'+(canChangeBookings&&b.status!=="rejected"?'<button class="btn small" data-booking="'+b.id+'" data-status="rejected">رفض الحجز</button>':(b.status==="rejected"?"—":"عرض فقط"))+'</td></tr>').join("");
+  $("adminBookings").innerHTML=(bs||[]).map(b=>{
+   const flightStatus=b.flights?.status||"";
+   const boardingState=b.boarded_at?"تم الصعود":b.check_in_at?"تم تسجيل الحضور":"لم يسجل الحضور";
+   const canProcessBoarding=role==="boarding_staff"&&b.status==="approved"&&["scheduled","boarding","in_progress"].includes(flightStatus);
+   let boardingAction="—";
+   if(canProcessBoarding&&!b.check_in_at)boardingAction='<button class="btn small primary" data-boarding-action="check-in" data-booking-id="'+b.id+'">تسجيل الحضور</button>';
+   else if(canProcessBoarding&&b.check_in_at&&!b.boarded_at&&["boarding","in_progress"].includes(flightStatus))boardingAction='<button class="btn small primary" data-boarding-action="board" data-booking-id="'+b.id+'" data-check-in="'+esc(b.check_in_at)+'">تأكيد الصعود</button>';
+   else if(canProcessBoarding&&b.boarded_at)boardingAction="تم الصعود";
+   else if(canChangeBookings&&b.status!=="rejected")boardingAction='<button class="btn small" data-booking="'+b.id+'" data-status="rejected">رفض الحجز</button>';
+   return '<tr><td>'+esc(b.passenger_name)+'</td><td>'+esc(b.roblox_username)+'</td><td>'+esc(b.flights?.flight_number||"—")+'</td><td>'+esc(b.status)+'</td><td>'+boardingState+'</td><td>'+boardingAction+'</td></tr>';
+  }).join("");
   $("adminEmployees").innerHTML=(es||[]).map(x=>'<tr><td>'+esc(x.roblox_username)+'</td><td>'+esc(x.employee_id)+'</td><td>'+esc(roleInfo[x.role]?.name||x.role)+'</td><td>'+(x.active?"نشط":"موقوف")+'</td><td>'+(x.role!=="owner"&&x.user_id!==uid?'<button class="btn small" data-delete-employee="'+esc(x.user_id)+'" data-employee-name="'+esc(x.roblox_username)+'">حذف الهوية</button>':"—")+'</td></tr>').join("");
   $("staffFlights").innerHTML=allFlights.filter(f=>f.owner_approved&&f.management_approved&&["scheduled","boarding","delayed","in_progress"].includes(f.status)).map(f=>'<tr><td>'+esc(f.flight_number)+'</td><td>'+esc(f.origin_code)+' → '+esc(f.destination_code)+'</td><td>'+dateLabel(f.departure_at)+'</td><td>'+esc(f.aircraft||"—")+'<br><small>'+roster(f)+'</small></td><td>'+statusName(f)+(f.crew_link_approved&&f.server_url?'<br><a target="_blank" rel="noopener" href="'+esc(f.server_url)+'">دخول سيرفر الموظفين</a>':"")+'<br>'+flightActions(f)+'</td></tr>').join("")||'<tr><td colspan="5">ما فيه رحلات معتمدة حالياً.</td></tr>';
   const towerRows=allFlights.filter(f=>f.owner_approved&&f.management_approved&&["scheduled","boarding","delayed","in_progress"].includes(f.status));
@@ -288,7 +299,23 @@ const premiumPanel=$("premiumAssignPanel");
   premiumPanel.classList.toggle("hidden",!(owner||management));
   if($("premiumAssignForm"))$("premiumAssignForm").onsubmit=async e=>{e.preventDefault();if(!owner&&!management)return;const {error}=await sb.rpc("assign_passenger_class",{p_flight_id:$("premiumFlight").value,p_username:$("premiumUsername").value.trim(),p_class:$("premiumClass").value});if(error)return alert("تعذر تعيين الفئة: "+error.message);alert("تم تحديث فئة المسافر.");$("premiumAssignForm").reset()};
  }
- $("adminBookings")?.addEventListener("click",async e=>{if(!canChangeBookings)return;const b=e.target.closest("[data-booking]");if(!b||b.dataset.status!=="rejected")return;if(!confirm("متأكد من رفض هذا الحجز؟"))return;const {error}=await sb.from("bookings").update({status:"rejected"}).eq("id",b.dataset.booking);if(error)alert("تعذر رفض الحجز.");else refresh()});
+ $("adminBookings")?.addEventListener("click",async e=>{
+  const boardingButton=e.target.closest("[data-boarding-action]");
+  if(boardingButton){
+   if(role!=="boarding_staff")return;
+   const action=boardingButton.dataset.boardingAction,stamp=new Date().toISOString();
+   const updates=action==="check-in"?{check_in_at:stamp}:{check_in_at:boardingButton.dataset.checkIn||stamp,boarded_at:stamp};
+   const {error}=await sb.from("bookings").update(updates).eq("id",boardingButton.dataset.bookingId).eq("status","approved");
+   if(error)alert("تعذر تحديث حالة البوردنق: "+error.message);else await refresh();
+   return;
+  }
+  if(!canChangeBookings)return;
+  const b=e.target.closest("[data-booking]");
+  if(!b||b.dataset.status!=="rejected")return;
+  if(!confirm("متأكد من رفض هذا الحجز؟"))return;
+  const {error}=await sb.from("bookings").update({status:"rejected"}).eq("id",b.dataset.booking);
+  if(error)alert("تعذر رفض الحجز.");else await refresh();
+ });
  $("flightForm")?.addEventListener("submit",async e=>{
   e.preventDefault();if(!pilot&&!owner)return;
   const originCode=$("fFrom").value.trim().toUpperCase(),destinationCode=$("fTo").value.trim().toUpperCase();if(originCode===destinationCode)return alert("مطار الإقلاع والوصول لازم يكونون مختلفين.");if(Number($("fEconomy").value)+Number($("fBusiness").value)+Number($("fFirst").value)<1)return alert("لازم تضيف مقعد واحد على الأقل.");

@@ -149,6 +149,7 @@ async function initDashboard(){
  $("bookingsPanel")?.classList.toggle("hidden",!canSeeBookings);
  $("staffFlightsPanel")?.classList.toggle("hidden",!canSeeFlights);
  const form=$("flightForm");
+ if($("pilotField"))$("pilotField").classList.toggle("hidden",!owner);if($("fPilot"))$("fPilot").required=owner;
  if(form){
   if(pilot){form.querySelector("button[type=submit]").textContent="إرسال طلب الرحلة للمالك";$("fStatus").value="scheduled";$("fStatus").closest(".field")?.classList.add("hidden")}
   else if(owner){form.querySelector("button[type=submit]").textContent="إنشاء رحلة معتمدة";$("fStatus").closest(".field")?.classList.remove("hidden")}
@@ -170,7 +171,7 @@ async function initDashboard(){
   ]);
   if(fe)console.error(fe);
   $("statFlights").textContent=fc??"—";$("statBookings").textContent=bc??"—";$("statPending").textContent=pc??"—";
-  allFlights=fs||[]; passengers=passengerRows||[];
+  allFlights=fs||[]; passengers=passengerRows||[];if($("fPilot")){const selected=$("fPilot").value;$("fPilot").innerHTML='<option value="">اختر الطيار</option>'+(es||[]).filter(x=>x.role==="pilot"&&x.active&&x.user_id).map(x=>'<option value="'+esc(x.user_id)+'">'+esc(x.roblox_username)+'</option>').join("");if(selected)$("fPilot").value=selected;}
   if($("premiumFlight"))$("premiumFlight").innerHTML='<option value="">اختر الرحلة</option>'+allFlights.filter(x=>x.status!=="cancelled").map(x=>'<option value="'+esc(x.id)+'">'+esc(x.flight_number)+' · '+esc(x.origin_code)+' → '+esc(x.destination_code)+'</option>').join("");
   if($("registeredPassengers"))$("registeredPassengers").innerHTML=passengers.map(x=>'<option value="'+esc(x.roblox_username)+'"></option>').join("");
   const crewRows=members||[];
@@ -321,8 +322,8 @@ const premiumPanel=$("premiumAssignPanel");
  });
  $("flightForm")?.addEventListener("submit",async e=>{
   e.preventDefault();if(!pilot&&!owner)return;
-  const originCode=$("fFrom").value.trim().toUpperCase(),destinationCode=$("fTo").value.trim().toUpperCase();if(originCode===destinationCode)return alert("مطار الإقلاع والوصول لازم يكونون مختلفين.");if(Number($("fEconomy").value)+Number($("fBusiness").value)+Number($("fFirst").value)<1)return alert("لازم تضيف مقعد واحد على الأقل.");
-  const row={flight_number:$("fNumber").value.trim().toUpperCase(),origin_code:originCode,destination_code:destinationCode,departure_at:new Date($("fTime").value).toISOString(),aircraft:$("fAircraft").value.trim()||null,server_url:$("fServerUrl").value.trim()||null,seats_total:Number($("fEconomy").value)+Number($("fBusiness").value)+Number($("fFirst").value),seats_economy:Number($("fEconomy").value),seats_business:Number($("fBusiness").value),seats_first:Number($("fFirst").value),status:owner?$("fStatus").value:"scheduled",created_by:uid,pilot_user_id:pilot?uid:null,owner_approved:owner,management_approved:owner};
+  const originCode=$("fFrom").value.trim().toUpperCase(),destinationCode=$("fTo").value.trim().toUpperCase();if(owner&&!$("fPilot").value)return alert("اختر الطيار المسؤول عن الرحلة.");if(originCode===destinationCode)return alert("مطار الإقلاع والوصول لازم يكونون مختلفين.");if(Number($("fEconomy").value)+Number($("fBusiness").value)+Number($("fFirst").value)<1)return alert("لازم تضيف مقعد واحد على الأقل.");
+  const row={flight_number:$("fNumber").value.trim().toUpperCase(),origin_code:originCode,destination_code:destinationCode,departure_at:new Date($("fTime").value).toISOString(),aircraft:$("fAircraft").value.trim()||null,server_url:$("fServerUrl").value.trim()||null,seats_total:Number($("fEconomy").value)+Number($("fBusiness").value)+Number($("fFirst").value),seats_economy:Number($("fEconomy").value),seats_business:Number($("fBusiness").value),seats_first:Number($("fFirst").value),status:owner?$("fStatus").value:"scheduled",created_by:uid,pilot_user_id:pilot?uid:owner?$("fPilot").value:null,owner_approved:owner,management_approved:owner};
   let insertResult;try{insertResult=await sb.from("flights").insert(row);}catch(err){console.error("Flight insert failed:",err);return alert("تعذر إنشاء الرحلة: "+(err?.message||"خطأ غير معروف"));}const {error}=insertResult;if(error){console.error("Flight insert failed:",error);return alert("تعذر إنشاء الرحلة: "+(error.message||"تحقق من البيانات والصلاحيات."));}
   $("flightForm").reset();alert(pilot?"تم إرسال طلب الرحلة للمالك للموافقة.":"تم إنشاء الرحلة.");await refresh();
  });

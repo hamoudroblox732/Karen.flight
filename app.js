@@ -51,7 +51,19 @@ async function initBooking(){
  if(!a){await sb.auth.signOut();$("bookingGuard").classList.remove("hidden");return}
  $("robloxName").value=a.roblox_username;
  const classNote=$("passengerClass");
- if(classNote){classNote.innerHTML='<option value="economy" selected>اقتصادي — مجاني</option>';classNote.disabled=true;}
+ let grantedClass="economy",classExpiry=null;
+ const {data:classInfo,error:classInfoError}=await sb.rpc("get_my_passenger_class");
+ if(classInfoError){console.error("Passenger class lookup:",classInfoError);return msg("formMessage","تعذر تحميل فئة حسابك. حدّث الصفحة وحاول مرة ثانية.",true);}
+ grantedClass=classInfo?.passenger_class||"economy";classExpiry=classInfo?.expires_at||null;
+ if(classNote){
+  const options=[["economy","اقتصادي — مجاني"]];
+  if(grantedClass==="business")options.push(["business","بزنس"]);
+  if(grantedClass==="first")options.push(["first","فرست كلاس"]);
+  classNote.innerHTML=options.map(([v,l])=>'<option value="'+v+'">'+l+'</option>').join("");
+  classNote.disabled=false;
+ }
+ if(classExpiry){const expiryLabel=new Date(classExpiry).toLocaleString("ar-SA");const note=$("classExpiryNote");if(note)note.textContent="الفئة الإضافية متاحة حتى "+expiryLabel+".";}
+
  try{
   const fs=await getFlights();
   $("flightId").innerHTML='<option value="">اختر الرحلة</option>'+fs.filter(f=>["scheduled","boarding"].includes(f.status)).map(f=>{const left=Number(f.economy_remaining??f.seats_economy??0),full=left<=0||Number(f.seats_remaining??f.seats_total??0)<=0;return '<option value="'+esc(f.id)+'" '+(full?"disabled":"")+'">'+esc(f.flight_number)+' · '+esc(f.origin_code)+' → '+esc(f.destination_code)+' · '+dateLabel(f.departure_at)+' · '+(full?"مكتملة — لا توجد مقاعد":"المقاعد المتبقية "+left)+'</option>'}).join("");
@@ -60,9 +72,11 @@ async function initBooking(){
  $("bookingForm").addEventListener("submit",async e=>{
   e.preventDefault();
   const flightId=$("flightId").value;if(!flightId)return msg("formMessage","اختر الرحلة أولاً.",true);
-  const {error}=await sb.from("bookings").insert({flight_id:flightId,roblox_username:a.roblox_username,passenger_name:$("passengerName").value.trim(),passenger_user_id:a.user_id,notes:$("notes").value.trim()||null,status:"approved"});
-  if(error){console.error("Booking insert:",error);return msg("formMessage",error.message.includes("انتهت مقاعد")?"انتهت مقاعد الاقتصادي في هذه الرحلة.":error.message.includes("full")?"اكتملت مقاعد الرحلة.":"تعذر تأكيد الحجز: "+error.message,true);}
-  msg("formMessage","تم تأكيد حجزك الاقتصادي المجاني بنجاح.");
+  const selectedClass=$("passengerClass").value||"economy";
+  const {error}=await sb.from("bookings").insert({flight_id:flightId,roblox_username:a.roblox_username,passenger_name:$("passengerName").value.trim(),passenger_user_id:a.user_id,passenger_class:selectedClass,notes:$("notes").value.trim()||null,status:"approved"});
+  if(error){console.error("Booking insert:",error);return msg("formMessage",error.message.includes("انتهت مقاعد")?"انتهت مقاعد هذه الفئة في الرحلة.":error.message.includes("full")?"اكتملت مقاعد الرحلة.":"تعذر تأكيد الحجز: "+error.message,true);}
+  const classLabel=selectedClass==="business"?"بزنس":selectedClass==="first"?"فرست كلاس":"اقتصادي مجاني";
+  msg("formMessage","تم تأكيد حجزك بفئة "+classLabel+" بنجاح.");
   $("bookingForm").querySelector('button[type="submit"]').disabled=true;
  });
 }
@@ -172,7 +186,7 @@ async function initDashboard(){
   if(fe)console.error(fe);
   $("statFlights").textContent=fc??"—";$("statBookings").textContent=bc??"—";$("statPending").textContent=pc??"—";
   allFlights=fs||[]; passengers=passengerRows||[];if($("fPilot")){const selected=$("fPilot").value;$("fPilot").innerHTML='<option value="">اختر الطيار</option>'+(es||[]).filter(x=>x.role==="pilot"&&x.active&&x.user_id).map(x=>'<option value="'+esc(x.user_id)+'">'+esc(x.roblox_username)+'</option>').join("");if(selected)$("fPilot").value=selected;}
-  if($("premiumFlight"))$("premiumFlight").innerHTML='<option value="">اختر الرحلة</option>'+allFlights.filter(x=>x.status!=="cancelled").map(x=>'<option value="'+esc(x.id)+'">'+esc(x.flight_number)+' · '+esc(x.origin_code)+' → '+esc(x.destination_code)+'</option>').join("");
+
   if($("registeredPassengers"))$("registeredPassengers").innerHTML=passengers.map(x=>'<option value="'+esc(x.roblox_username)+'"></option>').join("");
   const crewRows=members||[];
   const roster=f=>{const rows=crewRows.filter(x=>x.flight_id===f.id);const count=r=>rows.filter(x=>x.role===r).length;return "Pilot: "+(f.pilot_user_id?"1/1":"0/1")+" · Co-Pilot: "+count("co_pilot")+"/1 · Ground Crew: "+count("ground_staff")+"/7 · Cabin Crew: "+count("cabin_crew")+"/5 · Boarding: "+count("boarding_staff")+" · ATC: "+count("atc")+"/1"+(rows.length?"<br>"+rows.map(x=>esc(x.roblox_username||x.role)).join("، "):"");};
@@ -301,7 +315,7 @@ async function initDashboard(){
 const premiumPanel=$("premiumAssignPanel");
  if(premiumPanel){
   premiumPanel.classList.toggle("hidden",!(owner||management));
-  if($("premiumAssignForm"))$("premiumAssignForm").onsubmit=async e=>{e.preventDefault();if(!owner&&!management)return;const {error}=await sb.rpc("assign_passenger_class",{p_flight_id:$("premiumFlight").value,p_username:$("premiumUsername").value.trim(),p_class:$("premiumClass").value});if(error)return alert("تعذر تعيين الفئة: "+error.message);alert("تم تحديث فئة المسافر.");$("premiumAssignForm").reset()};
+  if($("premiumAssignForm"))$("premiumAssignForm").onsubmit=async e=>{e.preventDefault();if(!owner&&!management)return;const username=$("premiumUsername").value.trim(),passengerClass=$("premiumClass").value,durationDays=Number($("premiumDuration").value);const {data,error}=await sb.rpc("assign_passenger_class",{p_username:username,p_class:passengerClass,p_duration_days:durationDays});if(error)return alert("تعذر تعيين الفئة: "+error.message);if(passengerClass==="economy"){alert("تم إلغاء الفئة الإضافية وإرجاع المسافر إلى الاقتصادي.");}else{const expiry=data?new Date(data).toLocaleString("ar-SA"):"";alert("تم تعيين "+(passengerClass==="business"?"البزنس":"الفرست كلاس")+" للمسافر "+username+" حتى "+expiry+".");}$("premiumAssignForm").reset();$("premiumDuration").value="7";await refresh()};
  }
  $("adminBookings")?.addEventListener("click",async e=>{
   const boardingButton=e.target.closest("[data-boarding-action]");

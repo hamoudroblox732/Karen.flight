@@ -62,7 +62,7 @@ async function initBooking(){
   classNote.innerHTML=options.map(([v,l])=>'<option value="'+v+'">'+l+'</option>').join("");
   classNote.disabled=false;
  }
- if(classExpiry){const expiryLabel=new Date(classExpiry).toLocaleString("ar-SA");const note=$("classExpiryNote");if(note)note.textContent="الفئة الإضافية متاحة حتى "+expiryLabel+".";}
+ if(classExpiry){const expiryTime=new Date(classExpiry).getTime(),expiryLabel=new Date(classExpiry).toLocaleString("ar-SA");const note=$("classExpiryNote");if(note)note.textContent="الفئة الإضافية متاحة حتى "+expiryLabel+".";setTimeout(()=>location.reload(),Math.min(2147480000,Math.max(1000,expiryTime-Date.now()+1000)));}
 
  try{
   const fs=await getFlights();

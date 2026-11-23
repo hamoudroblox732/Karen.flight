@@ -16,6 +16,11 @@ function card(f){const totalLeft=Number(f.seats_remaining??f.seats_total??0),eco
 async function initFlights(){const box=$("flightList");try{const fs=await getFlights(),from=$("fromFilter"),to=$("toFilter");if(from)from.innerHTML='<option value="">كل المطارات</option>'+[...new Set(fs.map(x=>x.origin_code))].sort().map(x=>'<option>'+esc(x)+'</option>').join("");if(to)to.innerHTML='<option value="">كل الوجهات</option>'+[...new Set(fs.map(x=>x.destination_code))].sort().map(x=>'<option>'+esc(x)+'</option>').join("");const draw=()=>{const rows=fs.filter(x=>(!from?.value||x.origin_code===from.value)&&(!to?.value||x.destination_code===to.value)&&(!$("dateFilter")?.value||x.departure_at.slice(0,10)===$("dateFilter").value));box.innerHTML=rows.length?rows.map(card).join(""):'<div class="empty">ما فيه رحلات متاحة حالياً.</div>'};from?.addEventListener("change",draw);to?.addEventListener("change",draw);$("dateFilter")?.addEventListener("change",draw);draw()}catch{box.innerHTML='<div class="empty">تعذر تحميل الرحلات.</div>'}}
 async function initRegister(){$("registerForm")?.addEventListener("submit",async e=>{e.preventDefault();const u=$("username").value.trim(),p=$("password").value;if(!/^[A-Za-z0-9_]{3,20}$/.test(u))return msg("formMessage","اسم Roblox غير صحيح.",true);try{localStorage.setItem("karen_passenger_remember_device","1")}catch{}const r=await fetch(CFG.supabaseUrl+"/functions/v1/passenger-register",{method:"POST",headers:{"Content-Type":"application/json","apikey":CFG.supabaseKey},body:JSON.stringify({username:u,password:p})}),o=await r.json().catch(()=>({}));if(!r.ok)return msg("formMessage",o.error||"تعذر إنشاء الحساب.",true);const {error}=await sb.auth.signInWithPassword({email:paxAlias(u),password:p});if(error)return msg("formMessage","تم إنشاء الحساب. سجل الدخول من صفحة الدخول.",true);location.href="passenger-account.html"})}
 async function initPassengerLogin(){
+ const {data:sessionData}=await sb.auth.getSession();
+ if(sessionData.session){
+  const {data:passenger}=await sb.from("passenger_accounts").select("user_id").eq("user_id",sessionData.session.user.id).maybeSingle();
+  if(passenger)return location.replace("passenger-account.html");
+ }
  const remember=$("rememberPassengerDevice");
  $("loginForm")?.addEventListener("submit",async e=>{
   e.preventDefault();
